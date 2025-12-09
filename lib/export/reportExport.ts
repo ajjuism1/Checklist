@@ -151,7 +151,7 @@ export const generatePDF = async (project: Project, config: ChecklistConfig) => 
 
   // Helper function to add footer
   const addFooter = () => {
-    const pageCount = doc.getNumberOfPages();
+    const pageCount = (doc as any).getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
