@@ -42,21 +42,6 @@ export const Loading: React.FC<LoadingProps> = ({ size = 'md', text, fullScreen 
             </div>
           </div>
           <div>
-            <div className="w-10 h-10 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
             <h2 className="text-xl font-bold text-gray-900 mb-1">Appmaker Checklist</h2>
             <p className="text-sm text-gray-500">Loading your workspace...</p>
           </div>
