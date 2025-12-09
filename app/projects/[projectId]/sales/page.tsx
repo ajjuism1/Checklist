@@ -152,7 +152,7 @@ export default function SalesHandoverPage() {
   }
 
   // Map project data to form format
-  const initialData = {
+  const initialData: Record<string, any> = {
     brandName: project.brandName,
     storeUrlMyShopify: project.storeUrlMyShopify,
     storePublicUrl: project.storePublicUrl,
