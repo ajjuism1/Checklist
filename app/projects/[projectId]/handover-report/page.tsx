@@ -10,6 +10,8 @@ import { getProject, getChecklistConfig } from '@/lib/firebase/firestore';
 import { downloadMarkdown, generatePDF } from '@/lib/export/reportExport';
 import { Project, ChecklistConfig } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function HandoverReportPage() {
   const params = useParams();
   const router = useRouter();

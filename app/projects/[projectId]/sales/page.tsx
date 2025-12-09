@@ -12,6 +12,8 @@ import { Skeleton, SkeletonFormField } from '@/components/Skeleton';
 import { getProject, getChecklistConfig, updateProject, calculateProgress } from '@/lib/firebase/firestore';
 import { Project, ChecklistConfig, SalesChecklistData } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function SalesHandoverPage() {
   const params = useParams();
   const router = useRouter();

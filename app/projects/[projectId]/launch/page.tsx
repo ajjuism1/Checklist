@@ -11,6 +11,8 @@ import { Skeleton, SkeletonFormField } from '@/components/Skeleton';
 import { getProject, getChecklistConfig, updateProject, calculateProgress } from '@/lib/firebase/firestore';
 import { Project, ChecklistConfig } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function LaunchChecklistPage() {
   const params = useParams();
   const router = useRouter();

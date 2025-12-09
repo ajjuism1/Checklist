@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/Skeleton';
 import { getChecklistConfig, updateChecklistConfig, getIntegrations, updateIntegrations } from '@/lib/firebase/firestore';
 import { ChecklistConfig, Integration } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function SettingsPage() {
   const [config, setConfig] = useState<ChecklistConfig | null>(null);
   const [integrations, setIntegrations] = useState<Integration[]>([]);

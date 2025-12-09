@@ -13,6 +13,8 @@ import { getAllProjects, createProject, deleteProject, updateProject } from '@/l
 import { getProgressColor, getProgressBgColor, getStatusBadgeClasses } from '@/lib/utils/colors';
 import { Project } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);

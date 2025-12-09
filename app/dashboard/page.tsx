@@ -13,6 +13,8 @@ import { getAllProjects, createProject } from '@/lib/firebase/firestore';
 import { getProgressColor, getProgressBgColor, getStatusBadgeClasses } from '@/lib/utils/colors';
 import { Project } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

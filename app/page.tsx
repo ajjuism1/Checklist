@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loading } from '@/components/Loading';
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();

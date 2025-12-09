@@ -27,6 +27,8 @@ interface LaunchPipelineReport {
   completionDate: string | null;
 }
 
+export const dynamic = 'force-dynamic';
+
 export default function ReportsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

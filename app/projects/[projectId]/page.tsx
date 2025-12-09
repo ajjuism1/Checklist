@@ -15,6 +15,8 @@ import { getProject, getChecklistConfig, updateProject, flattenFields, getIntegr
 import { Project, ChecklistConfig, ProjectStatus, Integration } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
+export const dynamic = 'force-dynamic';
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
