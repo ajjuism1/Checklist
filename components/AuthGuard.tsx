@@ -29,11 +29,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children, requireAdmin = f
   }, [user, loading, requireAdmin, router]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <Loading size="lg" text="Loading..." />
-      </div>
-    );
+    return <Loading fullScreen />;
   }
 
   if (!user) {

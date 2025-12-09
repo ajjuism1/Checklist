@@ -21,10 +21,6 @@ export default function Home() {
     }
   }, [user, loading, router]);
 
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Loading size="lg" text="Loading..." />
-    </div>
-  );
+  return <Loading fullScreen />;
 }
 
