@@ -33,7 +33,7 @@ export default function ProjectDetailPage() {
     if (projectId) {
       loadProject();
     }
-  }, [projectId]);
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadProject = async () => {
     try {

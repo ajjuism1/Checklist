@@ -241,7 +241,7 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
 
       {selectedIntegrations.length === 0 && (
         <div className="border border-gray-200 rounded-lg p-8 text-center bg-gray-50">
-          <p className="text-sm text-gray-500">No integrations selected. Click "Select Integrations" to add them.</p>
+          <p className="text-sm text-gray-500">No integrations selected. Click &quot;Select Integrations&quot; to add them.</p>
         </div>
       )}
 
@@ -351,7 +351,7 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-sm text-gray-500">No integrations found matching "{searchQuery}"</p>
+                    <p className="text-sm text-gray-500">No integrations found matching &quot;{searchQuery}&quot;</p>
                   </div>
                 )}
               </div>
@@ -1645,7 +1645,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       <div className="fixed bottom-0 left-64 right-0 z-30 bg-white border-t-2 border-gray-200 shadow-lg px-8 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            <span className="font-semibold">Don't forget to save your changes</span>
+            <span className="font-semibold">Don&apos;t forget to save your changes</span>
           </div>
           <button
             type="button"

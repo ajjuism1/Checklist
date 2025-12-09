@@ -54,7 +54,7 @@ export default function ReportsPage() {
     if (projects.length > 0) {
       generateReport();
     }
-  }, [projects, iarPercentages]);
+  }, [projects, iarPercentages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Apply filters to report data

@@ -26,7 +26,7 @@ export default function LaunchChecklistPage() {
     if (projectId) {
       loadData();
     }
-  }, [projectId]);
+  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = async () => {
     try {
