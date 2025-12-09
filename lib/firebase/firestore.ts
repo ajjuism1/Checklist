@@ -22,6 +22,33 @@ export interface FlattenedField extends FieldConfig {
   isSubField?: boolean;
 }
 
+// Simple in-memory cache for frequently accessed data
+const cache = {
+  checklistConfig: null as ChecklistConfig | null,
+  integrations: null as Integration[] | null,
+  configTimestamp: 0,
+  integrationsTimestamp: 0,
+  cacheTTL: 5 * 60 * 1000, // 5 minutes cache TTL
+  // Promise cache to prevent race conditions when multiple calls happen simultaneously
+  configPromise: null as Promise<ChecklistConfig> | null,
+  integrationsPromise: null as Promise<Integration[]> | null,
+};
+
+// Helper to check if cache is still valid
+const isCacheValid = (timestamp: number): boolean => {
+  return Date.now() - timestamp < cache.cacheTTL;
+};
+
+// Clear cache (useful for testing or manual invalidation)
+export const clearCache = () => {
+  cache.checklistConfig = null;
+  cache.integrations = null;
+  cache.configTimestamp = 0;
+  cache.integrationsTimestamp = 0;
+  cache.configPromise = null;
+  cache.integrationsPromise = null;
+};
+
 // Projects Collection - lazy loaded to avoid build-time errors
 const getProjectsCollection = () => {
   if (!db) {
@@ -40,11 +67,15 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
   if (docSnap.exists()) {
     const project = { id: docSnap.id, ...docSnap.data() } as Project;
     
-    // Recalculate progress based on current config
-    const config = await getChecklistConfig();
+    // Load config and integrations in parallel, then calculate progress
+    const [config, integrations] = await Promise.all([
+      getChecklistConfig(true),
+      getIntegrations(true),
+    ]);
+    
     const [salesCompletion, launchCompletion] = await Promise.all([
-      calculateProgress(project.checklists?.sales || {}, config.sales, false),
-      calculateProgress(project.checklists?.launch || {}, config.launch, true),
+      calculateProgress(project.checklists?.sales || {}, config.sales, false, undefined),
+      calculateProgress(project.checklists?.launch || {}, config.launch, true, integrations),
     ]);
     const overall = Math.round((salesCompletion + launchCompletion) / 2);
     
@@ -64,18 +95,21 @@ export const getAllProjects = async (): Promise<Project[]> => {
   const q = query(getProjectsCollection(), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
   
-  // Get current config to recalculate progress
-  const config = await getChecklistConfig();
+  // Load config and integrations once, in parallel (will use cache if available)
+  const [config, integrations] = await Promise.all([
+    getChecklistConfig(true),
+    getIntegrations(true),
+  ]);
   
-  // Calculate progress for all projects in parallel
+  // Calculate progress for all projects in parallel, reusing the same config and integrations
   const projectsWithProgress = await Promise.all(
     querySnapshot.docs.map(async (doc) => {
       const project = { id: doc.id, ...doc.data() } as Project;
       
-      // Recalculate progress based on current config
+      // Recalculate progress based on current config, reusing integrations
       const [salesCompletion, launchCompletion] = await Promise.all([
-        calculateProgress(project.checklists?.sales || {}, config.sales, false),
-        calculateProgress(project.checklists?.launch || {}, config.launch, true),
+        calculateProgress(project.checklists?.sales || {}, config.sales, false, undefined),
+        calculateProgress(project.checklists?.launch || {}, config.launch, true, integrations),
       ]);
       const overall = Math.round((salesCompletion + launchCompletion) / 2);
       
@@ -187,18 +221,47 @@ const getDefaultChecklistConfig = (): ChecklistConfig => ({
   ],
 });
 
-export const getChecklistConfig = async (): Promise<ChecklistConfig> => {
+export const getChecklistConfig = async (useCache: boolean = true): Promise<ChecklistConfig> => {
+  // Return cached config if valid
+  if (useCache && cache.checklistConfig && isCacheValid(cache.configTimestamp)) {
+    return cache.checklistConfig;
+  }
+
+  // If there's already a pending request, return that promise to avoid duplicate fetches
+  if (cache.configPromise) {
+    return cache.configPromise;
+  }
+
   if (!db) {
     throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
   }
+
+  // Create and cache the promise
+  cache.configPromise = (async () => {
+    try {
   const docRef = doc(db, 'settings', 'checklist');
   const docSnap = await getDoc(docRef);
   
+      let config: ChecklistConfig;
   if (docSnap.exists()) {
-    return docSnap.data() as ChecklistConfig;
-  }
+        config = docSnap.data() as ChecklistConfig;
+      } else {
   // Return default config if none exists
-  return getDefaultChecklistConfig();
+        config = getDefaultChecklistConfig();
+      }
+      
+      // Update cache
+      cache.checklistConfig = config;
+      cache.configTimestamp = Date.now();
+      
+      return config;
+    } finally {
+      // Clear the promise cache after completion
+      cache.configPromise = null;
+    }
+  })();
+
+  return cache.configPromise;
 };
 
 export const updateChecklistConfig = async (config: ChecklistConfig): Promise<void> => {
@@ -207,23 +270,43 @@ export const updateChecklistConfig = async (config: ChecklistConfig): Promise<vo
   }
   const docRef = doc(db, 'settings', 'checklist');
   await setDoc(docRef, config, { merge: true });
+  
+  // Update cache immediately
+  cache.checklistConfig = config;
+  cache.configTimestamp = Date.now();
 };
 
 // Integrations management
-export const getIntegrations = async (): Promise<Integration[]> => {
+export const getIntegrations = async (useCache: boolean = true): Promise<Integration[]> => {
+  // Return cached integrations if valid
+  if (useCache && cache.integrations && isCacheValid(cache.integrationsTimestamp)) {
+    return cache.integrations;
+  }
+
+  // If there's already a pending request, return that promise to avoid duplicate fetches
+  if (cache.integrationsPromise) {
+    return cache.integrationsPromise;
+  }
+
   if (!db) {
     // During build, return empty array instead of throwing
     return [];
   }
+
+  // Create and cache the promise
+  cache.integrationsPromise = (async () => {
+    try {
   const docRef = doc(db, 'settings', 'integrations');
   const docSnap = await getDoc(docRef);
+      
+      let integrations: Integration[] = [];
   
   if (docSnap.exists()) {
     const data = docSnap.data();
-    const integrations = data.integrations;
-    if (Array.isArray(integrations) && integrations.length > 0) {
-      console.log(`Loaded ${integrations.length} integrations from Firestore`);
-      return integrations as Integration[];
+        const integrationsData = data.integrations;
+        if (Array.isArray(integrationsData) && integrationsData.length > 0) {
+          console.log(`Loaded ${integrationsData.length} integrations from Firestore`);
+          integrations = integrationsData as Integration[];
     } else {
       console.warn('Integrations document exists but integrations array is empty or invalid');
     }
@@ -231,21 +314,21 @@ export const getIntegrations = async (): Promise<Integration[]> => {
     console.log('No integrations document in Firestore, loading from JSON file');
   }
   
-  // Return default integrations from JSON file
-  // Try to load from JSON file (works in both server and client contexts)
+      // If no integrations from Firestore, try loading from JSON file
+      if (integrations.length === 0) {
   try {
     // For server-side, use require
     if (typeof window === 'undefined') {
       const integrationsData = require('../integrations.json');
       console.log(`Loaded ${integrationsData.length} integrations from JSON file (server)`);
-      return integrationsData as Integration[];
+            integrations = integrationsData as Integration[];
     } else {
       // For client-side, use fetch from public folder
       const response = await fetch('/integrations.json');
       if (response.ok) {
         const data = await response.json();
         console.log(`Loaded ${data.length} integrations from JSON file (client)`);
-        return data as Integration[];
+              integrations = data as Integration[];
       } else {
         console.error('Failed to fetch integrations.json:', response.status, response.statusText);
       }
@@ -253,9 +336,25 @@ export const getIntegrations = async (): Promise<Integration[]> => {
   } catch (error) {
     console.error('Error loading default integrations:', error);
   }
+      }
+      
+      // Update cache
+      cache.integrations = integrations;
+      cache.integrationsTimestamp = Date.now();
+      
   // Fallback to empty array if all else fails
+      if (integrations.length === 0) {
   console.warn('No integrations loaded, returning empty array');
-  return [];
+      }
+      
+      return integrations;
+    } finally {
+      // Clear the promise cache after completion
+      cache.integrationsPromise = null;
+    }
+  })();
+
+  return cache.integrationsPromise;
 };
 
 export const updateIntegrations = async (integrations: Integration[]): Promise<void> => {
@@ -271,6 +370,10 @@ export const updateIntegrations = async (integrations: Integration[]): Promise<v
     console.log(`Attempting to save ${integrations.length} integrations to Firestore...`);
     await setDoc(docRef, { integrations }, { merge: true });
     console.log(`Successfully saved ${integrations.length} integrations to Firestore at settings/integrations`);
+    
+    // Update cache immediately
+    cache.integrations = integrations;
+    cache.integrationsTimestamp = Date.now();
   } catch (error: any) {
     console.error('Error saving integrations to Firestore:', error);
     if (error.code === 'permission-denied') {
@@ -318,55 +421,30 @@ const isFieldRequired = (field: FieldConfig): boolean => {
 export const calculateProgress = async (
   checklist: Record<string, any>,
   config: FieldConfig[],
-  isLaunch: boolean = false
+  isLaunch: boolean = false,
+  integrations?: Integration[] // Allow passing integrations to avoid redundant fetches
 ): Promise<number> => {
   if (config.length === 0) return 0;
   
   let completed = 0;
   let total = 0;
   
-  // Load integrations if needed for launch checklist
-  let integrations: Integration[] = [];
-  if (isLaunch) {
+  // Load integrations if needed for launch checklist and not provided
+  let integrationsToUse: Integration[] = integrations || [];
+  if (isLaunch && integrationsToUse.length === 0) {
     try {
-      // Load integrations directly (inline to avoid circular dependency)
-      if (!db) {
-        // During build, skip integrations loading
-        integrations = [];
-      } else {
-        const docRef = doc(db, 'settings', 'integrations');
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const integrationsData = data.integrations;
-          if (Array.isArray(integrationsData) && integrationsData.length > 0) {
-            integrations = integrationsData as Integration[];
-          }
-        } else {
-          // Fallback to JSON file
-          if (typeof window === 'undefined') {
-            const integrationsData = require('../integrations.json');
-            integrations = integrationsData as Integration[];
-          } else {
-            const response = await fetch('/integrations.json');
-            if (response.ok) {
-              const data = await response.json();
-              integrations = data as Integration[];
-            }
-          }
-        }
-      }
+      // Use cached integrations if available
+      integrationsToUse = await getIntegrations(true);
     } catch (error) {
       console.error('Error loading integrations for progress calculation:', error);
     }
   }
   
-  const checkIntegrationRequirements = async (
+  const checkIntegrationRequirements = (
     selectedIntegrationIds: string[],
     requirementStatus: Record<string, Record<string, boolean>>,
     integrations: Integration[]
-  ): Promise<boolean> => {
+  ): boolean => {
     if (!Array.isArray(selectedIntegrationIds) || selectedIntegrationIds.length === 0) {
       return false;
     }
@@ -424,10 +502,10 @@ export const calculateProgress = async (
               if (isLaunch && subField.optionsSource === 'integrations') {
                 const selectedIds = Array.isArray(value) ? value : [];
                 const requirementStatus = checklist[field.id]?.[`${subField.id}_requirementStatus`] || {};
-                const allRequirementsMet = await checkIntegrationRequirements(
+                const allRequirementsMet = checkIntegrationRequirements(
                   selectedIds,
                   requirementStatus,
-                  integrations
+                  integrationsToUse
                 );
                 if (allRequirementsMet) completed++;
               } else {
@@ -468,10 +546,10 @@ export const calculateProgress = async (
           if (isLaunch && field.optionsSource === 'integrations') {
             const selectedIds = Array.isArray(value) ? value : [];
             const requirementStatus = checklist[`${field.id}_requirementStatus`] || {};
-            const allRequirementsMet = await checkIntegrationRequirements(
+            const allRequirementsMet = checkIntegrationRequirements(
               selectedIds,
               requirementStatus,
-              integrations
+              integrationsToUse
             );
             if (allRequirementsMet) completed++;
           } else {

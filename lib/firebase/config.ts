@@ -1,6 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
@@ -36,6 +36,21 @@ if (shouldInitialize) {
     authInstance = getAuth(app);
     dbInstance = getFirestore(app);
     storageInstance = getStorage(app);
+    
+    // Enable offline persistence for better performance and offline support
+    // This caches data locally and reduces network requests
+    if (dbInstance && typeof window !== 'undefined') {
+      enableIndexedDbPersistence(dbInstance).catch((err) => {
+        // Persistence can only be enabled in one tab at a time
+        if (err.code === 'failed-precondition') {
+          console.warn('Firestore persistence already enabled in another tab');
+        } else if (err.code === 'unimplemented') {
+          console.warn('Firestore persistence is not available in this browser');
+        } else {
+          console.warn('Error enabling Firestore persistence:', err);
+        }
+      });
+    }
   } catch (error) {
     // Silently fail during build - Firebase will be initialized on client side
     if (process.env.NODE_ENV !== 'production') {
