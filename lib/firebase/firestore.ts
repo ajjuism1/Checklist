@@ -22,10 +22,18 @@ export interface FlattenedField extends FieldConfig {
   isSubField?: boolean;
 }
 
-// Projects Collection
-export const projectsCollection = collection(db, 'projects');
+// Projects Collection - lazy loaded to avoid build-time errors
+const getProjectsCollection = () => {
+  if (!db) {
+    throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
+  }
+  return collection(db, 'projects');
+};
 
 export const getProject = async (projectId: string): Promise<Project | null> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
+  }
   const docRef = doc(db, 'projects', projectId);
   const docSnap = await getDoc(docRef);
   
@@ -53,7 +61,7 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
 };
 
 export const getAllProjects = async (): Promise<Project[]> => {
-  const q = query(projectsCollection, orderBy('createdAt', 'desc'));
+  const q = query(getProjectsCollection(), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
   
   // Get current config to recalculate progress
@@ -99,7 +107,7 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'createdAt
     updatedAt: now,
   };
   
-  const docRef = await addDoc(projectsCollection, newProject);
+  const docRef = await addDoc(getProjectsCollection(), newProject);
   return docRef.id;
 };
 
@@ -107,6 +115,9 @@ export const updateProject = async (
   projectId: string,
   updates: Partial<Project>
 ): Promise<void> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
+  }
   const docRef = doc(db, 'projects', projectId);
   await updateDoc(docRef, {
     ...updates,
@@ -115,12 +126,20 @@ export const updateProject = async (
 };
 
 export const deleteProject = async (projectId: string): Promise<void> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
+  }
   const docRef = doc(db, 'projects', projectId);
   await deleteDoc(docRef);
 };
 
-// Settings Collection
-export const settingsCollection = collection(db, 'settings');
+// Settings Collection - lazy loaded to avoid build-time errors
+const getSettingsCollection = () => {
+  if (!db) {
+    throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
+  }
+  return collection(db, 'settings');
+};
 
 // Default checklist configuration
 const getDefaultChecklistConfig = (): ChecklistConfig => ({
@@ -169,6 +188,9 @@ const getDefaultChecklistConfig = (): ChecklistConfig => ({
 });
 
 export const getChecklistConfig = async (): Promise<ChecklistConfig> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
+  }
   const docRef = doc(db, 'settings', 'checklist');
   const docSnap = await getDoc(docRef);
   
@@ -180,12 +202,19 @@ export const getChecklistConfig = async (): Promise<ChecklistConfig> => {
 };
 
 export const updateChecklistConfig = async (config: ChecklistConfig): Promise<void> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
+  }
   const docRef = doc(db, 'settings', 'checklist');
   await setDoc(docRef, config, { merge: true });
 };
 
 // Integrations management
 export const getIntegrations = async (): Promise<Integration[]> => {
+  if (!db) {
+    // During build, return empty array instead of throwing
+    return [];
+  }
   const docRef = doc(db, 'settings', 'integrations');
   const docSnap = await getDoc(docRef);
   
@@ -230,6 +259,9 @@ export const getIntegrations = async (): Promise<Integration[]> => {
 };
 
 export const updateIntegrations = async (integrations: Integration[]): Promise<void> => {
+  if (!db) {
+    throw new Error('Firestore is not initialized. Make sure Firebase config is set.');
+  }
   if (!Array.isArray(integrations)) {
     throw new Error('Integrations must be an array');
   }
@@ -298,25 +330,30 @@ export const calculateProgress = async (
   if (isLaunch) {
     try {
       // Load integrations directly (inline to avoid circular dependency)
-      const docRef = doc(db, 'settings', 'integrations');
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const integrationsData = data.integrations;
-        if (Array.isArray(integrationsData) && integrationsData.length > 0) {
-          integrations = integrationsData as Integration[];
-        }
+      if (!db) {
+        // During build, skip integrations loading
+        integrations = [];
       } else {
-        // Fallback to JSON file
-        if (typeof window === 'undefined') {
-          const integrationsData = require('../integrations.json');
-          integrations = integrationsData as Integration[];
+        const docRef = doc(db, 'settings', 'integrations');
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const integrationsData = data.integrations;
+          if (Array.isArray(integrationsData) && integrationsData.length > 0) {
+            integrations = integrationsData as Integration[];
+          }
         } else {
-          const response = await fetch('/integrations.json');
-          if (response.ok) {
-            const data = await response.json();
-            integrations = data as Integration[];
+          // Fallback to JSON file
+          if (typeof window === 'undefined') {
+            const integrationsData = require('../integrations.json');
+            integrations = integrationsData as Integration[];
+          } else {
+            const response = await fetch('/integrations.json');
+            if (response.ok) {
+              const data = await response.json();
+              integrations = data as Integration[];
+            }
           }
         }
       }
