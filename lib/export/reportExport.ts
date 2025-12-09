@@ -132,21 +132,21 @@ export const generatePDF = async (project: Project, config: ChecklistConfig) => 
   // App theme color scheme - matching Tailwind CSS colors
   const colors = {
     // Primary colors matching app theme
-    gray900: [17, 24, 39], // Primary dark - matches app's gray-900
-    gray800: [31, 41, 55], // Dark gray
-    gray700: [55, 65, 81], // Medium dark gray
-    gray600: [75, 85, 99], // Medium gray
-    gray500: [107, 114, 128], // Medium gray
-    gray400: [156, 163, 175], // Light gray
-    gray300: [209, 213, 219], // Lighter gray
-    gray200: [229, 231, 235], // Very light gray
-    gray100: [243, 244, 246], // Lightest gray - matches app's gray-100
-    gray50: [249, 250, 251], // Background - matches app's gray-50
-    white: [255, 255, 255],
+    gray900: [17, 24, 39] as [number, number, number], // Primary dark - matches app's gray-900
+    gray800: [31, 41, 55] as [number, number, number], // Dark gray
+    gray700: [55, 65, 81] as [number, number, number], // Medium dark gray
+    gray600: [75, 85, 99] as [number, number, number], // Medium gray
+    gray500: [107, 114, 128] as [number, number, number], // Medium gray
+    gray400: [156, 163, 175] as [number, number, number], // Light gray
+    gray300: [209, 213, 219] as [number, number, number], // Lighter gray
+    gray200: [229, 231, 235] as [number, number, number], // Very light gray
+    gray100: [243, 244, 246] as [number, number, number], // Lightest gray - matches app's gray-100
+    gray50: [249, 250, 251] as [number, number, number], // Background - matches app's gray-50
+    white: [255, 255, 255] as [number, number, number],
     // Progress colors matching app theme
-    green500: [16, 185, 129], // green-500 for 67%+
-    yellow500: [234, 179, 8], // yellow-500 for 34-66%
-    red500: [239, 68, 68], // red-500 for 0-33%
+    green500: [16, 185, 129] as [number, number, number], // green-500 for 67%+
+    yellow500: [234, 179, 8] as [number, number, number], // yellow-500 for 34-66%
+    red500: [239, 68, 68] as [number, number, number], // red-500 for 0-33%
   };
 
   // Helper function to add footer
