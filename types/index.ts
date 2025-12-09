@@ -8,15 +8,32 @@ export interface User {
 }
 
 // Field Configuration Types
-export type FieldType = 'checkbox' | 'text' | 'textarea' | 'multi_input' | 'url' | 'group' | 'select';
+export type FieldType = 'checkbox' | 'text' | 'textarea' | 'multi_input' | 'url' | 'group' | 'select' | 'multi_select';
 
 export interface FieldConfig {
   id: string; // slug
   label: string;
   type: FieldType;
-  optional?: boolean;
+  optional?: boolean; // If true, field is optional. If not set or false, field is required/mandatory
+  required?: boolean; // Explicitly mark field as mandatory/required. Takes precedence over optional
   fields?: FieldConfig[]; // For group type
   options?: string[]; // For select/dropdown type
+  optionsSource?: 'integrations' | 'static'; // For multi_select - where to get options from
+  requirementsFieldId?: string; // Field ID to auto-populate with requirements when integration is selected
+  hasStatus?: boolean; // For multi_input fields - whether to show status dropdown
+  placeholder?: string; // Placeholder text for input fields
+  subtext?: string; // Helper text/subtext to explain what the field means
+}
+
+// Integration types
+export interface Integration {
+  id: string;
+  name: string;
+  category: string;
+  scope: string;
+  limitations: string;
+  requirements: string[];
+  documentationLink: string;
 }
 
 export interface ChecklistConfig {
@@ -52,6 +69,8 @@ export interface Project {
   dunsStatus: string;
   poc: POC;
   status?: ProjectStatus; // Project status
+  handoverDate?: string | null; // Handover date (ISO string)
+  completionDate?: string | null; // Date of completion (ISO string), auto-set when status is Live
   checklists: {
     sales: Record<string, any>; // Dynamic based on FieldConfig
     launch: Record<string, any>; // Dynamic based on FieldConfig

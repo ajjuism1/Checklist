@@ -1,9 +1,11 @@
-import { Project, ChecklistConfig, FieldConfig } from '@/types';
+import { Project, ChecklistConfig, FieldConfig, Integration } from '@/types';
+import { getIntegrations } from '@/lib/firebase/firestore';
 
 export interface EmailSection {
   id: string;
   title?: string;
   body: string;
+  htmlBody?: string;
 }
 
 export interface GeneratedEmail {
@@ -11,6 +13,7 @@ export interface GeneratedEmail {
   subject: string;
   sections: EmailSection[];
   fullBody: string;
+  htmlBody?: string;
 }
 
 // Helper to get field value from project, handling both direct fields and nested group fields
@@ -91,11 +94,109 @@ const getNestedFieldValue = (value: any, fieldId: string, subFieldId: string): a
   return null;
 };
 
-export const generateMissingInfoEmail = (
+// Helper to create HTML table for Gmail (Gmail-compatible HTML)
+const createHTMLTable = (headers: string[], rows: string[][]): string => {
+  if (rows.length === 0) return '';
+  
+  const headerRow = headers.map(h => `<th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #f5f5f5; font-weight: 600;">${h}</th>`).join('');
+  const dataRows = rows.map(row => 
+    `<tr>${row.map(cell => `<td style="border: 1px solid #ddd; padding: 12px;">${cell || ''}</td>`).join('')}</tr>`
+  ).join('');
+  
+  return `<table style="border-collapse: collapse; width: 100%; margin: 16px 0; font-family: Arial, sans-serif;">
+    <thead>
+      <tr>${headerRow}</tr>
+    </thead>
+    <tbody>
+      ${dataRows}
+    </tbody>
+  </table>`;
+};
+
+// Helper to create a formatted list with clear structure (plain text)
+const createFormattedList = (items: Array<{ label: string; details?: string[] }>): string => {
+  if (items.length === 0) return '';
+  
+  return items.map((item, idx) => {
+    let text = `• ${item.label}`;
+    if (item.details && item.details.length > 0) {
+      text += '\n' + item.details.map(detail => `  - ${detail}`).join('\n');
+    }
+    return text;
+  }).join('\n\n');
+};
+
+// Helper to create HTML list table (for Gmail)
+const createHTMLListTable = (items: Array<{ label: string; details?: string[] }>): string => {
+  if (items.length === 0) return '';
+  
+  const rows = items.map(item => {
+    const details = item.details && item.details.length > 0 
+      ? `<ul style="margin: 4px 0; padding-left: 20px;">${item.details.map(d => `<li style="margin: 2px 0;">${d}</li>`).join('')}</ul>`
+      : '';
+    return `<tr><td style="border: 1px solid #ddd; padding: 12px; font-weight: 600;">${item.label}</td><td style="border: 1px solid #ddd; padding: 12px;">${details}</td></tr>`;
+  }).join('');
+  
+  return `<table style="border-collapse: collapse; width: 100%; margin: 16px 0; font-family: Arial, sans-serif;">
+    <thead>
+      <tr>
+        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #f5f5f5; font-weight: 600;">Item</th>
+        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #f5f5f5; font-weight: 600;">Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>`;
+};
+
+// Helper to create a structured information block (plain text)
+const createInfoBlock = (items: Array<{ name: string; status?: string; details: string }>): string => {
+  if (items.length === 0) return '';
+  
+  return items.map(item => {
+    let text = `• ${item.name}`;
+    if (item.status) {
+      text += ` (${item.status})`;
+    }
+    text += `\n  ${item.details}`;
+    return text;
+  }).join('\n\n');
+};
+
+// Helper to create HTML info block table (for Gmail)
+const createHTMLInfoBlock = (items: Array<{ name: string; status?: string; details: string }>): string => {
+  if (items.length === 0) return '';
+  
+  const rows = items.map(item => {
+    const nameCell = item.status 
+      ? `${item.name}<br><span style="color: #666; font-size: 0.9em;">(${item.status})</span>`
+      : item.name;
+    return `<tr>
+      <td style="border: 1px solid #ddd; padding: 12px; font-weight: 600; width: 30%;">${nameCell}</td>
+      <td style="border: 1px solid #ddd; padding: 12px;">${item.details}</td>
+    </tr>`;
+  }).join('');
+  
+  return `<table style="border-collapse: collapse; width: 100%; margin: 16px 0; font-family: Arial, sans-serif;">
+    <thead>
+      <tr>
+        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #f5f5f5; font-weight: 600;">Item</th>
+        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #f5f5f5; font-weight: 600;">Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>`;
+};
+
+export const generateMissingInfoEmail = async (
   project: Project,
   config: ChecklistConfig,
-  userName?: string
-): GeneratedEmail => {
+  userName?: string,
+  selectedSections?: Set<string>
+): Promise<GeneratedEmail> => {
   // Helper to get field value with config support
   const getValue = (fieldId: string, isSales: boolean) => getFieldValue(project, fieldId, isSales, config);
   const sections: EmailSection[] = [];
@@ -106,27 +207,46 @@ export const generateMissingInfoEmail = (
   // 1. Greeting Section (always included)
   sections.push({
     id: 'greeting',
-    body: `Hi ${pocName},\n\nHope you're doing well. We're currently preparing the mobile app setup for **${brandName}**, and we need a few additional details to proceed smoothly.\n`,
+    body: `Hi ${pocName},\n\nHope you're doing well. We're currently preparing the mobile app setup for "${brandName}", and we need a few additional details to proceed smoothly.\n`,
+    htmlBody: `<p>Hi ${pocName},</p><p>Hope you're doing well. We're currently preparing the mobile app setup for <strong>"${brandName}"</strong>, and we need a few additional details to proceed smoothly.</p>`,
   });
 
   // 2. Migration / Fresh-specific section
   const releaseTypeValue = getValue('releaseType', true) || project.releaseType || '';
   const releaseType = (releaseTypeValue.toString()).toLowerCase();
   if (releaseType === 'migration') {
+    if (!selectedSections || selectedSections.has('migration')) {
+      const migrationItems = [
+        { label: 'Existing app store links', details: ['Google Play Store URL', 'Apple App Store URL'] },
+        { label: 'Keystore details', details: ['Current keystore ownership status', 'Previous partner information (if applicable)'] },
+        { label: 'Signing & release constraints', details: ['Any specific requirements or limitations'] }
+      ];
+      
     sections.push({
       id: 'migration',
       title: 'Migration-Specific Requirements',
-      body: `Since this is a migration from your existing app, we'll need:\n• Existing app store links (Google Play & App Store)\n• Details of your current keystore (whether you own it or your previous partner does)\n• Any constraints around signing / release management\n\n`,
+        body: `Since this is a migration from your existing app, we'll need the following information:\n\n${createFormattedList(migrationItems)}\n\n`,
+        htmlBody: `<p>Since this is a migration from your existing app, we'll need the following information:</p>${createHTMLListTable(migrationItems)}`,
     });
+    }
   } else if (releaseType === 'fresh') {
     // For fresh apps, we don't ask about keystore, but we can mention new store assets
     const keystoreValue = getValue('keystoreFiles', false);
     if (isFieldEmpty(keystoreValue, { id: 'keystoreFiles', label: 'Keystore Files', type: 'url' })) {
+      if (!selectedSections || selectedSections.has('fresh-keystore')) {
+        const freshItems = [
+          { label: 'New Play Store assets', details: ['App icons', 'Screenshots', 'Store listing content'] },
+          { label: 'New App Store assets', details: ['App icons', 'Screenshots', 'Store listing content'] },
+          { label: 'Developer Account setup', details: ['Confirmation of account creation', 'Access permissions'] }
+        ];
+        
       sections.push({
         id: 'fresh-keystore',
         title: 'New App Store Assets',
-        body: `For this fresh app release, we'll need:\n• New Play Store & App Store assets\n• Confirmation of Developer Account setup\n\n`,
+          body: `For this fresh app release, we'll need:\n\n${createFormattedList(freshItems)}\n\n`,
+          htmlBody: `<p>For this fresh app release, we'll need:</p>${createHTMLListTable(freshItems)}`,
       });
+      }
     }
   }
 
@@ -143,30 +263,42 @@ export const generateMissingInfoEmail = (
     missingDevAccounts.push('iOS Developer Account');
   }
   
-  if (missingDevAccounts.length > 0) {
-    let devAccountBody = 'We need to confirm the status of your developer accounts:\n';
+  if (missingDevAccounts.length > 0 && (!selectedSections || selectedSections.has('developer-accounts'))) {
+    const devAccountItems: Array<{ name: string; status?: string; details: string }> = [];
     
     if (androidDevAccount !== true) {
-      devAccountBody += '• **Android Developer Account**: Please confirm status & share access invitation email or Play Console organization details.\n';
+      devAccountItems.push({
+        name: 'Android Developer Account',
+        status: 'Pending',
+        details: 'Please confirm status & share access invitation email or Play Console organization details.'
+      });
     }
     
     if (iosDevAccount !== true || (dunsStatus && dunsStatus.toLowerCase() !== 'completed' && dunsStatus.toLowerCase() !== 'not required')) {
-      devAccountBody += '• **iOS Developer Account**: Please provide:\n';
-      devAccountBody += '  - Your Apple Developer account email\n';
-      devAccountBody += '  - Company legal name as registered with Apple\n';
-      devAccountBody += '  - Status of DUNS/Enrollment\n';
+      const iosDetails: string[] = [];
+      iosDetails.push('Apple Developer account email');
+      iosDetails.push('Company legal name as registered with Apple');
+      if (dunsStatus && dunsStatus.toLowerCase() !== 'completed' && dunsStatus.toLowerCase() !== 'not required') {
+        iosDetails.push('DUNS/Enrollment status');
     }
     
-    devAccountBody += '\n';
+      devAccountItems.push({
+        name: 'iOS Developer Account',
+        status: 'Pending',
+        details: `Please provide: ${iosDetails.join(', ')}.`
+      });
+    }
     
     sections.push({
       id: 'developer-accounts',
       title: 'Developer Account Status',
-      body: devAccountBody,
+      body: `We need to confirm the status of your developer accounts:\n\n${createInfoBlock(devAccountItems)}\n\n`,
+      htmlBody: `<p>We need to confirm the status of your developer accounts:</p>${createHTMLInfoBlock(devAccountItems)}`,
     });
   }
 
   // 4. Integrations & Credentials Section
+  const integrationsSelected = getValue('integrations', false);
   const integrationsCredentials = getValue('integrationsCredentials', false);
   const firebaseAccess = getValue('firebaseAccess', false);
   const metaDeveloperAccess = getValue('metaDeveloperAccess', false);
@@ -179,31 +311,87 @@ export const generateMissingInfoEmail = (
     missingIntegrations.push('Meta Developer Access');
   }
   
+  // Get selected integrations and their requirements
+  let selectedIntegrationsList: Integration[] = [];
+  if (Array.isArray(integrationsSelected) && integrationsSelected.length > 0) {
+    try {
+      const allIntegrations = await getIntegrations();
+      selectedIntegrationsList = allIntegrations.filter(integ => 
+        integrationsSelected.includes(integ.id)
+      );
+    } catch (error) {
+      console.error('Error loading integrations:', error);
+    }
+  }
+  
   // Check if integrationsCredentials is empty or incomplete
   const hasIntegrations = Array.isArray(integrationsCredentials) && integrationsCredentials.length > 0;
+  const hasSelectedIntegrations = selectedIntegrationsList.length > 0;
   
-  if (missingIntegrations.length > 0 || !hasIntegrations) {
-    let integrationsBody = 'We still need access and credentials for the following:\n';
+  if ((missingIntegrations.length > 0 || !hasIntegrations || hasSelectedIntegrations) && 
+      (!selectedSections || selectedSections.has('integrations'))) {
+    const integrationItems: Array<{ name: string; status?: string; details: string }> = [];
     
+    // Add platform access requirements
     if (firebaseAccess !== true) {
-      integrationsBody += '• Firebase Admin access\n';
+      integrationItems.push({
+        name: 'Firebase',
+        status: 'Platform Access',
+        details: 'Admin access required for Firebase project management.'
+      });
     }
     if (metaDeveloperAccess !== true) {
-      integrationsBody += '• Meta Developer Access (Admin/Developer access required)\n';
-    }
-    if (!hasIntegrations) {
-      integrationsBody += '• Integration credentials and API keys (e.g., Razorpay, payment gateways, etc.)\n';
-    } else {
-      // List what's missing - this is a simplified check
-      integrationsBody += '• Additional integration credentials as needed\n';
+      integrationItems.push({
+        name: 'Meta (Facebook)',
+        status: 'Platform Access',
+        details: 'Admin/Developer access required for Meta Developer Console.'
+      });
     }
     
-    integrationsBody += '\n';
+    // Add selected integrations and their requirements
+    if (hasSelectedIntegrations) {
+      selectedIntegrationsList.forEach(integ => {
+        const requirements = integ.requirements && integ.requirements.length > 0
+          ? integ.requirements.join(', ')
+          : 'No specific requirements listed';
+        
+        let details = `Required: ${requirements}`;
+        if (integ.documentationLink && 
+            integ.documentationLink !== 'N/A' && 
+            !integ.documentationLink.includes('Requested')) {
+          details += ` | Documentation: ${integ.documentationLink}`;
+        }
+        
+        integrationItems.push({
+          name: integ.name,
+          status: integ.category || 'Integration',
+          details: details
+      });
+      });
+    }
+    
+    // Add placeholder if no integrations selected
+    if (!hasSelectedIntegrations && !hasIntegrations) {
+      integrationItems.push({
+        name: 'Integration Credentials',
+        status: 'General',
+        details: 'Please select integrations from the checklist and provide the required API keys and credentials.'
+      });
+    }
+    
+    let integrationsBody = `We still need access and credentials for the following:\n\n${createInfoBlock(integrationItems)}\n\n`;
+    let integrationsHtmlBody = `<p>We still need access and credentials for the following:</p>${createHTMLInfoBlock(integrationItems)}`;
+    
+    if (!hasIntegrations && hasSelectedIntegrations) {
+      integrationsBody += 'Please provide the credentials listed above for the selected integrations.\n\n';
+      integrationsHtmlBody += '<p>Please provide the credentials listed above for the selected integrations.</p>';
+    }
     
     sections.push({
       id: 'integrations',
       title: 'Integrations & Credentials',
       body: integrationsBody,
+      htmlBody: integrationsHtmlBody,
     });
   }
 
@@ -235,17 +423,18 @@ export const generateMissingInfoEmail = (
     missingSalesFields.push('Payment confirmation');
   }
   
-  if (missingSalesFields.length > 0) {
-    let salesBody = 'We\'re missing some information from the sales handover:\n';
-    missingSalesFields.forEach((field) => {
-      salesBody += `• ${field}\n`;
-    });
-    salesBody += '\n';
+  if (missingSalesFields.length > 0 && (!selectedSections || selectedSections.has('sales-fields'))) {
+    const salesItems = missingSalesFields.map(field => ({
+      name: field,
+      status: 'Missing',
+      details: 'Required for project setup and handover.'
+    }));
     
     sections.push({
       id: 'sales-fields',
       title: 'Missing Sales Information',
-      body: salesBody,
+      body: `We're missing some information from the sales handover:\n\n${createInfoBlock(salesItems)}\n\n`,
+      htmlBody: `<p>We're missing some information from the sales handover:</p>${createHTMLInfoBlock(salesItems)}`,
     });
   }
 
@@ -261,17 +450,18 @@ export const generateMissingInfoEmail = (
     missingLaunchItems.push('Store Listing Details');
   }
   
-  if (missingLaunchItems.length > 0) {
-    let launchBody = 'We also need:\n';
-    missingLaunchItems.forEach((item) => {
-      launchBody += `• ${item}\n`;
-    });
-    launchBody += '\n';
+  if (missingLaunchItems.length > 0 && (!selectedSections || selectedSections.has('launch-items'))) {
+    const launchItems = missingLaunchItems.map(item => ({
+      name: item,
+      status: 'Pending',
+      details: 'Required before launch.'
+    }));
     
     sections.push({
       id: 'launch-items',
       title: 'Additional Launch Requirements',
-      body: launchBody,
+      body: `We also need the following items:\n\n${createInfoBlock(launchItems)}\n\n`,
+      htmlBody: `<p>We also need the following items:</p>${createHTMLInfoBlock(launchItems)}`,
     });
   }
 
@@ -279,17 +469,29 @@ export const generateMissingInfoEmail = (
   sections.push({
     id: 'closing',
     body: `Once we have these details, we'll be able to proceed with development without delays.\n\nIf you have any questions, feel free to reply to this email or reach out to your Appmaker POC directly.\n\nBest,\n${internalUserName}\nAppmaker Team`,
+    htmlBody: `<p>Once we have these details, we'll be able to proceed with development without delays.</p><p>If you have any questions, feel free to reply to this email or reach out to your Appmaker POC directly.</p><p>Best,<br>${internalUserName}<br>Appmaker Team</p>`,
   });
 
-  // Build full body from sections
+  // Build full body from sections with better formatting
   const fullBody = sections.map((section) => {
     let text = '';
     if (section.title) {
-      text += `${section.title}\n${'='.repeat(section.title.length)}\n\n`;
+      // Use a cleaner header format
+      text += `${section.title}\n${'─'.repeat(section.title.length)}\n\n`;
     }
     text += section.body;
     return text;
   }).join('\n\n');
+
+  // Build HTML body from sections
+  const htmlBody = sections.map((section) => {
+    let html = '';
+    if (section.title) {
+      html += `<h3 style="margin-top: 24px; margin-bottom: 12px; color: #333; font-size: 18px; font-weight: 600; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;">${section.title}</h3>`;
+    }
+    html += section.htmlBody || section.body.replace(/\n/g, '<br>');
+    return html;
+  }).join('\n');
 
   // Generate subject
   const subject = `[Action Required] Missing Info for Your App Launch – ${brandName}`;
@@ -308,6 +510,7 @@ export const generateMissingInfoEmail = (
     subject,
     sections,
     fullBody,
+    htmlBody: `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">${htmlBody}</div>`,
   };
 };
 

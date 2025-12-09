@@ -52,8 +52,8 @@ export default function LaunchChecklistPage() {
   const handleSubmit = async (data: Record<string, any>) => {
     if (!project || !config) return;
 
-    // Calculate progress
-    const launchCompletion = calculateProgress(data, config.launch);
+    // Calculate progress (launch checklist requires requirement checks)
+    const launchCompletion = await calculateProgress(data, config.launch, true);
     const overall = Math.round((project.progress.salesCompletion + launchCompletion) / 2);
 
     await updateProject(projectId, {
@@ -131,9 +131,37 @@ export default function LaunchChecklistPage() {
     );
   }
 
-  const initialData = {
-    ...project.checklists.launch,
+  // Auto-populate integrations from sales checklist if they exist
+  const getInitialData = () => {
+    const launchData = { ...project.checklists.launch };
+    
+    // Check if sales checklist has integrations
+    // Sales structure: sales.integrations.integrations (group.field)
+    const salesIntegrationsGroup = project.checklists.sales?.integrations;
+    const salesIntegrationsArray = salesIntegrationsGroup?.integrations && Array.isArray(salesIntegrationsGroup.integrations)
+      ? salesIntegrationsGroup.integrations
+      : [];
+    
+    // If sales has integrations and launch doesn't have any yet, copy them
+    if (salesIntegrationsArray.length > 0) {
+      // Launch structure: launch.accessCredentials.integrations (group.field)
+      const launchAccessCredentials = launchData.accessCredentials || {};
+      const currentLaunchIntegrations = launchAccessCredentials.integrations || [];
+      const hasLaunchIntegrations = Array.isArray(currentLaunchIntegrations) && currentLaunchIntegrations.length > 0;
+      
+      if (!hasLaunchIntegrations) {
+        // Copy sales integrations to launch
+        launchData.accessCredentials = {
+          ...launchAccessCredentials,
+          integrations: [...salesIntegrationsArray], // Copy array to avoid reference issues
+        };
+      }
+    }
+    
+    return launchData;
   };
+
+  const initialData = getInitialData();
 
   return (
     <AuthGuard>

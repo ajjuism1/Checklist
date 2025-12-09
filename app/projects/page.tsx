@@ -20,6 +20,8 @@ export default function ProjectsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [handoverMonthFilter, setHandoverMonthFilter] = useState<string>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<{ projectId: string; projectName: string } | null>(null);
   const [editingProject, setEditingProject] = useState<{ id: string; name: string } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -45,17 +47,34 @@ export default function ProjectsPage() {
   };
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredProjects(projects);
-    } else {
+    let filtered = projects;
+    
+    // Apply search filter
+    if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
-      const filtered = projects.filter((project) =>
+      filtered = filtered.filter((project) =>
         project.brandName.toLowerCase().includes(query) ||
         project.collabCode?.toLowerCase().includes(query)
       );
-      setFilteredProjects(filtered);
     }
-  }, [searchQuery, projects]);
+    
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((project) => project.status === statusFilter);
+    }
+    
+    // Apply handover month filter
+    if (handoverMonthFilter !== 'all') {
+      filtered = filtered.filter((project) => {
+        if (!project.handoverDate) return false;
+        const handoverDate = new Date(project.handoverDate);
+        const monthYear = `${handoverDate.getFullYear()}-${String(handoverDate.getMonth() + 1).padStart(2, '0')}`;
+        return monthYear === handoverMonthFilter;
+      });
+    }
+    
+    setFilteredProjects(filtered);
+  }, [searchQuery, statusFilter, handoverMonthFilter, projects]);
 
   const handleDeleteProject = async () => {
     if (!deleteConfirm) return;
@@ -174,7 +193,9 @@ export default function ProjectsPage() {
                 </button>
               </div>
 
-              {/* Sticky Search Bar */}
+              {/* Search and Filters */}
+              <div className="flex flex-col gap-4">
+                {/* Search Bar */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,6 +219,74 @@ export default function ProjectsPage() {
                     </svg>
                   </button>
                 )}
+                </div>
+                
+                {/* Filters */}
+                <div className="flex items-center gap-4 flex-wrap">
+                  {/* Status Filter */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Filter by Status:</label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150 cursor-pointer min-w-[160px]"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="Not Started">Not Started</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="On HOLD">On HOLD</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Live">Live</option>
+                    </select>
+                  </div>
+                  
+                  {/* Handover Month Filter */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Handover Month:</label>
+                    <select
+                      value={handoverMonthFilter}
+                      onChange={(e) => setHandoverMonthFilter(e.target.value)}
+                      className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150 cursor-pointer min-w-[180px]"
+                    >
+                      <option value="all">All Months</option>
+                      {(() => {
+                        const months = new Set<string>();
+                        projects.forEach(project => {
+                          if (project.handoverDate) {
+                            const date = new Date(project.handoverDate);
+                            const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                            months.add(monthYear);
+                          }
+                        });
+                        return Array.from(months)
+                          .sort()
+                          .reverse()
+                          .map(monthYear => {
+                            const [year, month] = monthYear.split('-');
+                            const date = new Date(parseInt(year), parseInt(month) - 1);
+                            return (
+                              <option key={monthYear} value={monthYear}>
+                                {date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                              </option>
+                            );
+                          });
+                      })()}
+                    </select>
+                  </div>
+                  
+                  {/* Clear Filters Button */}
+                  {(statusFilter !== 'all' || handoverMonthFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setStatusFilter('all');
+                        setHandoverMonthFilter('all');
+                      }}
+                      className="px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 font-semibold hover:bg-gray-100 rounded-xl transition-colors"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -240,7 +329,7 @@ export default function ProjectsPage() {
                 return (
                   <div
                     key={project.id}
-                    className="card p-5 hover:shadow-md transition-all duration-150 group relative"
+                    className="card p-6 hover:shadow-sm hover:border-gray-300 transition-all duration-200 group relative border-2 border-gray-100"
                   >
                     {/* Actions Menu */}
                     <div className="absolute top-3 right-3">
@@ -303,18 +392,18 @@ export default function ProjectsPage() {
                       className="block"
                     >
                       {/* Header */}
-                      <div className="flex items-start justify-between mb-3 pr-8">
+                      <div className="flex items-start justify-between mb-4 pr-8">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-gray-700 transition-colors truncate">
+                          <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-gray-700 transition-colors truncate">
                             {project.brandName}
                           </h3>
                           <div className="flex items-center gap-2 flex-wrap">
                           {project.collabCode && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 text-xs font-semibold border border-gray-200">
                               {project.collabCode}
                             </span>
                           )}
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${getStatusBadgeClasses(project.status || 'Not Started')}`}>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getStatusBadgeClasses(project.status || 'Not Started')}`}>
                               {project.status || 'Not Started'}
                             </span>
                           </div>
@@ -323,25 +412,31 @@ export default function ProjectsPage() {
 
                     {/* Overall Progress */}
                       <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Overall Progress</span>
-                        <span className="text-sm font-bold text-gray-900">{project.progress.overall}%</span>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200">
+                          <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center flex-shrink-0">
+                              <span className="text-base font-bold text-gray-900">{project.progress.overall}%</span>
                       </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Overall Progress</div>
                       <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                            className="block h-2.5 transition-all duration-500 rounded-full"
+                                  className="h-2.5 transition-all duration-500 rounded-full"
                           style={{ 
                             width: `${Math.min(100, Math.max(0, Number(project.progress.overall) || 0))}%`, 
                             backgroundColor: getProgressBgColor(Number(project.progress.overall) || 0),
-                            minWidth: (Number(project.progress.overall) || 0) > 0 ? '2px' : '0' 
+                                    minWidth: (Number(project.progress.overall) || 0) > 0 ? '4px' : '0' 
                           }}
                         />
+                              </div>
+                            </div>
+                          </div>
                       </div>
                     </div>
 
                       {/* Footer */}
-                      <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                        <span className="text-xs text-gray-500">View details</span>
+                      <div className="pt-3 border-t border-gray-200 flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-600">View project details</span>
                         <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>

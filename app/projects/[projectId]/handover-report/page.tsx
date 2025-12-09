@@ -87,9 +87,29 @@ export default function HandoverReportPage() {
       case 'multi_input':
         return Array.isArray(value) && value.length > 0 ? (
           <ul className="list-disc list-inside space-y-1">
-            {value.map((item: string, idx: number) => (
-              <li key={idx} className="text-gray-900">{item}</li>
-            ))}
+            {value.map((item: any, idx: number) => {
+              // Handle object format {value, status, checked, remark}
+              if (typeof item === 'object' && item !== null) {
+                const displayValue = item.value || item;
+                return (
+                  <li key={idx} className="text-gray-900">
+                    {String(displayValue)}
+                    {item.status && (
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold ${
+                        item.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                        item.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
+                        item.status === 'On Hold' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {item.status}
+                      </span>
+                    )}
+                  </li>
+                );
+              }
+              // Handle string format
+              return <li key={idx} className="text-gray-900">{String(item)}</li>;
+            })}
           </ul>
         ) : (
           <span className="text-gray-400">None</span>
@@ -109,19 +129,60 @@ export default function HandoverReportPage() {
         if (typeof value === 'object' && value !== null) {
           return (
             <div className="space-y-1">
-              {fieldConfig?.fields?.map((subField: any) => (
-                <div key={subField.id} className="text-sm">
-                  <span className="font-semibold text-gray-700">{subField.label}:</span>{' '}
-                  <span className="text-gray-900">{value[subField.id] || 'N/A'}</span>
-                </div>
-              ))}
+              {fieldConfig?.fields?.map((subField: any) => {
+                const subValue = value[subField.id];
+                // Handle object format {value, status, checked, remark}
+                let displayValue = subValue;
+                if (typeof subValue === 'object' && subValue !== null && !Array.isArray(subValue)) {
+                  displayValue = subValue.value || subValue;
+                }
+                return (
+                  <div key={subField.id} className="text-sm">
+                    <span className="font-semibold text-gray-700">{subField.label}:</span>{' '}
+                    <span className="text-gray-900">
+                      {displayValue === null || displayValue === undefined || displayValue === '' 
+                        ? 'N/A' 
+                        : String(displayValue)}
+                    </span>
+                    {typeof subValue === 'object' && subValue !== null && subValue.status && (
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold ${
+                        subValue.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                        subValue.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
+                        subValue.status === 'On Hold' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {subValue.status}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         }
         return <span className="text-gray-400">Not provided</span>;
       case 'textarea':
         return <p className="text-gray-900 whitespace-pre-wrap text-sm">{String(value)}</p>;
+      case 'multi_select':
+        return Array.isArray(value) && value.length > 0 ? (
+          <ul className="list-disc list-inside space-y-1">
+            {value.map((item: any, idx: number) => (
+              <li key={idx} className="text-gray-900">{String(item)}</li>
+            ))}
+          </ul>
+        ) : (
+          <span className="text-gray-400">None</span>
+        );
       default:
+        // Handle objects that might be accidentally passed
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          // If it's an object with a value property, use that
+          if ('value' in value) {
+            return <span className="text-gray-900">{String(value.value)}</span>;
+          }
+          // Otherwise, stringify the object
+          return <span className="text-gray-900">{JSON.stringify(value)}</span>;
+        }
         return <span className="text-gray-900">{String(value)}</span>;
     }
   };

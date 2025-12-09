@@ -1,0 +1,1591 @@
+{
+  "integrations": [
+    {
+      "id": "judgeme-reviews",
+      "name": "Judgeme Reviews",
+      "category": "Product Reviews",
+      "scope": "1. Text and ratings and supported on the PDP\n2. Native implementation\n3. Show review count on PLP, PDP \n4. Show reviews at the bottom of PDP (with ratings, reviews & images)",
+      "limitations": null,
+      "requirements": [
+        "1. Public Key",
+        "2. Private Key",
+        "3. Shopify URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/judgeme"
+    },
+    {
+      "id": "loox-reviews",
+      "name": "Loox Reviews",
+      "category": "Product Reviews",
+      "scope": "1. Text and ratings and supported on the PDP\n2. Webview implementation\n3. Show reviews on a separate page (webview modal)",
+      "limitations": "Webview implementation\nPlan wise limitation from partner",
+      "requirements": [
+        "1. Shop Name",
+        "2. Loox ID"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/looxreview"
+    },
+    {
+      "id": "yotpo-reviews",
+      "name": "Yotpo Reviews",
+      "category": "Product Reviews",
+      "scope": "1. Text and ratings and supported on the PDP\n2. Native implementation\n3. Show review count on PLP, PDP \n4. Show reviews at the bottom of PDP (with ratings, reviews & images)",
+      "limitations": null,
+      "requirements": [
+        "1. Yopto App Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/yotpo"
+    },
+    {
+      "id": "stamped-reviews",
+      "name": "Stamped Reviews",
+      "category": "Product Reviews",
+      "scope": "1. Text and ratings and supported on the PDP\n2. Webview implementation\n3. Show reviews on a separate page (webview modal)",
+      "limitations": "Webview implementation\nOnly supported on PDP",
+      "requirements": [
+        "1. API Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/stamped-reviews"
+    },
+    {
+      "id": "facebook-sdk",
+      "name": "Facebook SDK",
+      "category": "Analytics",
+      "scope": "1. Android and iOS app integrated via react-native-fbsdk\n2. Core app events (e.g., app activated, content viewed, purchases) tracked\n3. Events sent to Meta’s Events Manager for reporting and analytics",
+      "limitations": null,
+      "requirements": [
+        "1. App ID",
+        "2. Client ID"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/facebook-sdk"
+    },
+    {
+      "id": "firebase-analytics",
+      "name": "Firebase Analytics",
+      "category": "Analytics",
+      "scope": "1. Capture automatic lifecycle events (e.g. first_open, app_update)\n2. Send custom events to analyze feature usage and funnels\n3. Segment audiences for remarketing and performance tracking\n4. Export data to BigQuery for advanced analysis",
+      "limitations": "In-app notifications",
+      "requirements": [
+        "1. FCM key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/dashboard/push-notification"
+    },
+    {
+      "id": "microsoft-clarity",
+      "name": "Microsoft Clarity",
+      "category": "Analytics",
+      "scope": "1. Heatmaps (click, scroll, area): Visualize where users click, scroll depth, and engagement zones. Event tracking\n2. Session recordings: Watch anonymized user sessions to observe actual interactions, navigation steps, and potential pain points.",
+      "limitations": null,
+      "requirements": [
+        "1. Clarity Project ID"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/Clarity"
+    },
+    {
+      "id": "mixpanel",
+      "name": "Mixpanel",
+      "category": "Analytics",
+      "scope": "1. Capture automatic lifecycle events (e.g. first_open, app_update)- Basic events",
+      "limitations": "1.Time Event not supported",
+      "requirements": [
+        "1. Project Token"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/mixpanel"
+    },
+    {
+      "id": "deltax",
+      "name": "DeltaX",
+      "category": "Analytics",
+      "scope": "1. Real-time event tracking (iOS & Android)\n2. Cross-channel Tracking & Multi-touch Attribution\n3, Support for deep linking",
+      "limitations": null,
+      "requirements": [
+        "1. XB from Delta X"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/deltax"
+    },
+    {
+      "id": "uxcam",
+      "name": "UXcam",
+      "category": "Analytics",
+      "scope": "1. Heatmaps (click, scroll, area): Visualize where users click, scroll depth, and engagement zones. Event tracking\n2. Session recordings: Watch anonymized user sessions to observe actual interactions, navigation steps, and potential pain points.",
+      "limitations": null,
+      "requirements": [
+        "1. API KEY"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/Uxcam"
+    },
+    {
+      "id": "casa-crm",
+      "name": "Casa CRM",
+      "category": "Analytics",
+      "scope": "1. tracking key user and e-commerce events in the application. These events are originally captured in Appmaker and then brought into Casa for reporting, segmentation, and insights.",
+      "limitations": "1. Only event tracking",
+      "requirements": [],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/casa"
+    },
+    {
+      "id": "clevertap",
+      "name": "Clevertap",
+      "category": "Retention",
+      "scope": "1. Real-time event tracking (iOS & Android)\n2. Personalized push notifications & in-app messages\n3. Advanced user segmentation & audience targeting\n4. Pre-built campaign journeys (abandonment, re-engagement, onboarding)\n5. Support for deep linking, product recommendations, and more\n6. Cohort analysis and funnel tracking",
+      "limitations": "Interactive push notification (Will be available after the SDK upgrade to the latest version\nNative display",
+      "requirements": [
+        "1. Project ID",
+        "2. Project Token",
+        "3. Project Region"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/clevertap"
+    },
+    {
+      "id": "moengage",
+      "name": "Moengage",
+      "category": "Retention",
+      "scope": "Real-time event tracking from your Appmaker-powered app (Supports both iOS and Android)\nSend automated push notifications (transactional, campaign, and triggered)\nAudience segmentation based on in-app behavior\nCampaign automation workflows (cart abandonments, re-engagement, etc.)\nDeep linking support, Push Amplification\nPush Templates and In-App Notifications",
+      "limitations": null,
+      "requirements": [
+        "1. Moengage App ID",
+        "2. Moengage Data center number"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/moengage"
+    },
+    {
+      "id": "webengage",
+      "name": "Webengage",
+      "category": "Retention",
+      "scope": "Real-time event tracking from your Appmaker-powered app (iOS and Android)\nAutomated push notifications (transactional, campaign, and triggered)\nAudience segmentation based on in-app behavior\nCampaign workflows (abandon carts, re-engagement, etc.)\nDeep linking and in-app messaging\nPush and in-app templates",
+      "limitations": null,
+      "requirements": [
+        "1. Shop Name",
+        "2. Webengage license code",
+        "3. Webengage data center"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/webengage"
+    },
+    {
+      "id": "contlo",
+      "name": "Contlo",
+      "category": "Retention",
+      "scope": "Event tracking (e.g., add to cart, product viewed)\nPush notifications (Android, iOS)\nCampaign flows & analytics",
+      "limitations": null,
+      "requirements": [
+        "1. API Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/contlo"
+    },
+    {
+      "id": "klaviyo",
+      "name": "Klaviyo",
+      "category": "Retention",
+      "scope": "Automatically sync real-time user behavior into Klaviyo\nTrigger automated push and in-app notifications\nLeverage intelligent segmentation based on user actions\nUtilize Klaviyo’s native tools—rich push, silent push, badge management, deep links, and forms\nAlign mobile data with email/SMS journeys for a unified customer view",
+      "limitations": null,
+      "requirements": [
+        "1. Public API key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/klaviyo"
+    },
+    {
+      "id": "wigzo",
+      "name": "Wigzo",
+      "category": "Retention",
+      "scope": "1.Event tracking (e.g., add to cart, product viewed)\n2.Push notifications (Android, iOS)\n3.Campaign flows & analytics",
+      "limitations": null,
+      "requirements": [
+        "1.App ID",
+        "2. Site ID"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/wigzo"
+    },
+    {
+      "id": "appsflyer",
+      "name": "AppsFlyer",
+      "category": "MMP",
+      "scope": "Mobile Attribution:Accurately attribute installs to marketing campaigns.\nCustom Event Tracking: Monitor user actions like purchases, sign-ups, and more.\nRetention and Funnel Metrics: Measure user retention and optimize conversion funnels.\nReal-Time Reporting: Access real-time insights in the Appsflyer dashboard.\nIntegrations with Advertising Networks:Connect with platforms like Facebook, Google, and more.\nOne link functionality",
+      "limitations": null,
+      "requirements": [
+        "1. Dev Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/appsflyer"
+    },
+    {
+      "id": "adjust",
+      "name": "Adjust",
+      "category": "MMP",
+      "scope": "Mobile Attribution:Accurately attribute installs to marketing campaigns.\nCustom Event Tracking: Monitor user actions like purchases, sign-ups, and more.\nRetention and Funnel Metrics: Measure user retention and optimize conversion funnels.\nReal-Time Reporting: Access real-time insights in the Appsflyer dashboard.\nIntegrations with Advertising Networks:Connect with platforms like Facebook, Google, and more.\nOne link functionality",
+      "limitations": null,
+      "requirements": [
+        "1. Android App Token",
+        "2. iOS App Token"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/adjust"
+    },
+    {
+      "id": "apptrove-trackier",
+      "name": "AppTrove (Trackier)",
+      "category": "MMP",
+      "scope": "Mobile Attribution:Accurately attribute installs to marketing campaigns.\nCustom Event Tracking: Monitor user actions like purchases, sign-ups, and more.\nRetention and Funnel Metrics: Measure user retention and optimize conversion funnels.\nReal-Time Reporting: Access real-time insights in the Appsflyer dashboard.\nIntegrations with Advertising Networks:Connect with platforms like Facebook, Google, and more.",
+      "limitations": "- Deeplinking functionality (ongoing implementation for Mcaffeine)",
+      "requirements": [
+        "1. SDK/App Key for Android (Required)",
+        "2. SDK Signing Secret ID for Android",
+        "3. SDK Signing Key for Android",
+        "4. SDK/App Key for iOS (Required)",
+        "5. SDK Signing Secret ID for iOS",
+        "6. SDK Signing Key for iOS",
+        "7. ATTUserAuthorization Time(Seconds)",
+        "8. Deeplinking URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/apptrove"
+    },
+    {
+      "id": "shopflo-login-checkout",
+      "name": "Shopflo Login & Checkout",
+      "category": "Checkout",
+      "scope": "- Login and checkout\n-One click checkout\n- Reverse login functionality\n-Unifiied login for app and checkout",
+      "limitations": "- Checkout- Webview Integration",
+      "requirements": [],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/shopflo"
+    },
+    {
+      "id": "kwikpass-v2",
+      "name": "Kwikpass V2",
+      "category": "Checkout",
+      "scope": "- Login and checkout\n-One click checkout\n- Reverse login functionality\n-Unifiied login for app and checkout",
+      "limitations": "- Checkout- Webview Integration",
+      "requirements": [
+        "1. Merchant ID",
+        "2. Store Domain Url",
+        "3. Environment"
+      ],
+      "documentationUrl": null
+    },
+    {
+      "id": "razorpay-checkout-payments-magic-magicx",
+      "name": "Razorpay Checkout - Payments, Magic, MagicX",
+      "category": "Checkout",
+      "scope": "- Normal shopify checkout-Payment gateways powered by razorpay",
+      "limitations": "Webview Implementation",
+      "requirements": [
+        "1. Razorpay Live Key (ONLY FOR MAGIC CHECKOUT)",
+        "2. Store URL (ONLY FOR MAGICX CHECKOUT)",
+        "3. [Experimental] For Standard Checkout with MagicX",
+        "4. Additional Config for Standard Checkout"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/razorpay"
+    },
+    {
+      "id": "shiprocket-checkout-fastrr",
+      "name": "Shiprocket Checkout (Fastrr)",
+      "category": "Checkout",
+      "scope": "1. One click checkout",
+      "limitations": "Webview Implementation",
+      "requirements": [
+        "1. Domain Name"
+      ],
+      "documentationUrl": " https://docs.appmaker.xyz/docs/integrations/fastrrcheckout"
+    },
+    {
+      "id": "simpl-checkout",
+      "name": "Simpl Checkout",
+      "category": "Checkout",
+      "scope": "1. One Click checkout",
+      "limitations": "Webview Implementation",
+      "requirements": [
+        "1. Environment"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/simpl"
+    },
+    {
+      "id": "pragma-1checkout-logisy",
+      "name": "Pragma 1Checkout (Logisy)",
+      "category": "Checkout",
+      "scope": "1. One click checkout",
+      "limitations": "Webview Implementation",
+      "requirements": [
+        "1. Sample Name"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/pragma"
+    },
+    {
+      "id": "quinn-shoppable-videos",
+      "name": "Quinn - Shoppable Videos",
+      "category": "Shoppable Videos",
+      "scope": "1. Video widget on homepage, \n2. floating widget on PDP\n3. Story Block (Homepage,PLP,PDP)\n4. Add to cart functionality from Video Widgets\n5. Native Implentation",
+      "limitations": null,
+      "requirements": [
+        "1. Config",
+        "2. Global",
+        "3. Widgets"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/quinn"
+    },
+    {
+      "id": "whatmore-shoppable-videos",
+      "name": "Whatmore Shoppable Videos",
+      "category": "Shoppable Videos",
+      "scope": "1. Video widget on homepage\n2. Native Implementation",
+      "limitations": "1. No story block support\n2. Only Homepage video block support",
+      "requirements": [
+        "1. Shopify Store ID"
+      ],
+      "documentationUrl": null
+    },
+    {
+      "id": "live2-ai",
+      "name": "Live2.AI",
+      "category": "Shoppable Videos",
+      "scope": "1. Video widget on homepage, \n2. floating widget on PDP\n3. Story Block (Homepage,PLP,PDP)\n4. Add to cart functionality from Video Widgets\n5. Native Implentation",
+      "limitations": null,
+      "requirements": [
+        "1. Live2.ai Auth Code"
+      ],
+      "documentationUrl": null
+    },
+    {
+      "id": "lively-vudio",
+      "name": "Lively(Vudio)",
+      "category": "Shoppable Videos",
+      "scope": "1. Video widget on homepage, \n3. Story Block (Homepage,PLP,PDP)\n4. Add to cart functionality from Video Widgets\n5. Native Implentation",
+      "limitations": null,
+      "requirements": [
+        "1.  Lively Company id"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/lively"
+    },
+    {
+      "id": "reelup-shoppable-videos",
+      "name": "ReelUp - Shoppable Videos",
+      "category": "Shoppable Videos",
+      "scope": "1. Video widget on homepage,",
+      "limitations": "1. No story block support\n2. Only Homepage video block support",
+      "requirements": [
+        "1. API Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/reelup"
+    },
+    {
+      "id": "shopify-search-discovery",
+      "name": "Shopify Search & Discovery",
+      "category": "Search and Filter",
+      "scope": "1. Search\n2. Product suggestions\n3. Default collection filters",
+      "limitations": "1.Only serach functionality. Do not power collections",
+      "requirements": [],
+      "documentationUrl": null
+    },
+    {
+      "id": "searchtap",
+      "name": "Searchtap",
+      "category": "Search and Filter",
+      "scope": "Product suggestions, Category suggestions, search filters",
+      "limitations": "1.Only serach functionality. Do not power collections",
+      "requirements": [
+        "1. URL",
+        "2. Auth Token",
+        "3. Search Collection"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/searchtap"
+    },
+    {
+      "id": "wizzy",
+      "name": "Wizzy",
+      "category": "Search and Filter",
+      "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+      "limitations": null,
+      "requirements": [
+        "1. Shopify online store (URL)",
+        "2. Wizzy api endpoint",
+        "3. API KEY",
+        "4. STORE ID"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/Wizzy"
+    },
+    {
+      "id": "boostcommerce",
+      "name": "BoostCommerce",
+      "category": "Search and Filter",
+      "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+      "limitations": null,
+      "requirements": [
+        "1. MyShopify URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/boostcommerce"
+    },
+    {
+      "id": "argoid",
+      "name": "Argoid",
+      "category": "Search and Filter",
+      "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+      "limitations": null,
+      "requirements": [
+        "1. Argoid app id",
+        "2. Authorization key",
+        "3. Events Authorization key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/argoid"
+    },
+    {
+      "id": "visenze-ai-search-recommend",
+      "name": "ViSenze AI Search & Recommend",
+      "category": "Search and Filter",
+      "scope": "- Shop the look\n- Pair it with\n- Similar products",
+      "limitations": "No search functionality",
+      "requirements": [
+        "1. App key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/ViSenze%20AI%20Search%20&%20Recommend"
+    },
+    {
+      "id": "zevi-ai",
+      "name": "Zevi-ai",
+      "category": "Search and Filter",
+      "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+      "limitations": null,
+      "requirements": [
+        "1. MyShopify URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/zevi.ai"
+    },
+    {
+      "id": "findify",
+      "name": "Findify",
+      "category": "Search and Filter",
+      "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+      "limitations": null,
+      "requirements": [
+        "1.Findify Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/findify"
+    },
+    {
+      "id": "unboxd",
+      "name": "Unboxd",
+      "category": "Search and Filter",
+      "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+      "limitations": null,
+      "requirements": [
+        "1. Unboxd key",
+        "2.Base URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/unboxd"
+    },
+    {
+      "id": "lucent-simply-otp",
+      "name": "Lucent Simply OTP",
+      "category": "Login",
+      "scope": "Otp Login\nAvialable for non plus users",
+      "limitations": null,
+      "requirements": [
+        "1. Shop Name"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/lucent"
+    },
+    {
+      "id": "simplify-my-login",
+      "name": "Simplify My Login",
+      "category": "Login",
+      "scope": "Otp Login- Available for non plus users, outside India availability",
+      "limitations": null,
+      "requirements": [
+        "1. Store Name",
+        "2. SML API Key",
+        "3. Default country code"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/simplyotp"
+    },
+    {
+      "id": "codfirm-otp-login-cashfree",
+      "name": "CODFIRM OTP Login (Cashfree)",
+      "category": "Login",
+      "scope": "Otp Login",
+      "limitations": null,
+      "requirements": [
+        "1.  shopify store url"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/codfirm"
+    },
+    {
+      "id": "google-login",
+      "name": "Google Login",
+      "category": "Login",
+      "scope": "Social login- firebase- Free of cost",
+      "limitations": null,
+      "requirements": [
+        "1. Firebase project"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/googlelogin"
+    },
+    {
+      "id": "apple-login",
+      "name": "Apple Login",
+      "category": "Login",
+      "scope": "Social login- firebase- Free of cost",
+      "limitations": null,
+      "requirements": [
+        "1. Firebase project",
+        "2. Apple developer account access"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/applelogin"
+    },
+    {
+      "id": "nector-loyalty-rewards",
+      "name": "Nector: Loyalty & Rewards",
+      "category": "Loyalty & Rewards",
+      "scope": "Loyalty, Rewards, Referrals",
+      "limitations": "Webview integration",
+      "requirements": [
+        "1. API Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/nector"
+    },
+    {
+      "id": "smile-io",
+      "name": "Smile-io",
+      "category": "Loyalty & Rewards",
+      "scope": "Loyalty, Rewards, Referrals",
+      "limitations": "1. Webview integration\n2. Smile Pro Plan or higher in order to access API keys",
+      "requirements": [
+        "1. Channel key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/smileio"
+    },
+    {
+      "id": "popcoins",
+      "name": "POPCoins",
+      "category": "Loyalty & Rewards",
+      "scope": "Loyalty, Rewards, Referrals, Supports reward coin application on PLP, PDP and cart",
+      "limitations": null,
+      "requirements": [
+        "1.Shopify Store Name",
+        "2. Shopify Name"
+      ],
+      "documentationUrl": null
+    },
+    {
+      "id": "loyaltylion",
+      "name": "LoyaltyLion",
+      "category": "Loyalty & Rewards",
+      "scope": "Loyalty, Rewards, Referrals",
+      "limitations": "Webview integration",
+      "requirements": [
+        "1. Token"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/loyaltylion"
+    },
+    {
+      "id": "kangaroo-rewards",
+      "name": "Kangaroo Rewards",
+      "category": "Loyalty & Rewards",
+      "scope": "Loyalty, Rewards, Referrals\n- Float button",
+      "limitations": "Webview integration",
+      "requirements": [
+        "1. JWT Secret"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/kangaroo"
+    },
+    {
+      "id": "glood-ai",
+      "name": "Glood.AI",
+      "category": "Upsell",
+      "scope": "product recommendations on PDP and cart page",
+      "limitations": null,
+      "requirements": [],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/glood"
+    },
+    {
+      "id": "ufe-cross-sell-upsell-bundle",
+      "name": "UFE Cross Sell & Upsell Bundle",
+      "category": "Upsell",
+      "scope": "product bundle on PDP",
+      "limitations": null,
+      "requirements": [
+        "1.Store link"
+      ],
+      "documentationUrl": null
+    },
+    {
+      "id": "return-prime",
+      "name": "Return Prime",
+      "category": "Return Management",
+      "scope": "1. Returnprime App helps you manage all your returns, exchange and refunds at one place. \n2. Webview Integration",
+      "limitations": "Webview integration",
+      "requirements": [
+        "1. Channel ID",
+        "2. Shopify Store URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/returnprime"
+    },
+    {
+      "id": "kiwi-sizing",
+      "name": "Kiwi Sizing",
+      "category": "Kiwi Sizing",
+      "scope": "1. Size chart supported in PDP- webview",
+      "limitations": "Webview integration",
+      "requirements": [
+        "1. Size Chart URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/kiwi"
+    },
+    {
+      "id": "engagebud",
+      "name": "Engagebud",
+      "category": "Gamification",
+      "scope": "1. Game widget available to be added on the homepage- Webview integration",
+      "limitations": "Webview integration",
+      "requirements": [
+        "1. Game URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/Actions/engagebud-integration"
+    },
+    {
+      "id": "bitespeed",
+      "name": "Bitespeed",
+      "category": "Conversational Commerce WA Automation",
+      "scope": "Event tracking ( login, register, cartCreated, productViewed )\nPush notifications ( I can see the code, not sure its functional )",
+      "limitations": null,
+      "requirements": [
+        "1. Bitespeed API Key",
+        "2. Shopify store base URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/bitespeed"
+    },
+    {
+      "id": "bik",
+      "name": "BIK",
+      "category": "Conversational Commerce WA Automation",
+      "scope": "Event tracking ( addToCart, productViewed,addedToWishlist,keywordSearched)",
+      "limitations": "No push notification",
+      "requirements": [
+        "1. Shopify Url"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/bik"
+    },
+    {
+      "id": "wiser",
+      "name": "Wiser",
+      "category": "Personlisation",
+      "scope": "Below are the widgets powered :\n1. New arrivals\n2. FBT\n3. Related products\n4. cart recommendations\n\nBut insertion of these blocks has to be done theme level. Extension alone cannot add the scrollers to app",
+      "limitations": "Insertion of these blocks has to be done theme level. Extension alone cannot add the scrollers to app",
+      "requirements": [
+        "1. Partner Name",
+        "2. Secret Key",
+        "3. Shop Name"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/wiser"
+    },
+    {
+      "id": "rebuy",
+      "name": "Rebuy",
+      "category": "Personlisation",
+      "scope": "product scroller on PDP , cart",
+      "limitations": "Not sure whether it works for other merchants. It was only used for clinically. Integrated by ecom ethos",
+      "requirements": [
+        "1. Rebuy API Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/rebuy"
+    },
+    {
+      "id": "swym-wishlist-plus",
+      "name": "Swym Wishlist Plus",
+      "category": "Wishlist",
+      "scope": "Sync wishlists between mobile app and web",
+      "limitations": "It requires theme changes like managing wishlist actions",
+      "requirements": [
+        "1. pid",
+        "2. Swym API Endpoint",
+        "3. API Key"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/swym"
+    },
+    {
+      "id": "recurpay-subscription",
+      "name": "Recurpay Subscription",
+      "category": "Subscriptions",
+      "scope": "Subscription details on PDP\nsubscription products has custom checkout",
+      "limitations": null,
+      "requirements": [
+        "1. API URL"
+      ],
+      "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/recurpay"
+    },
+    {
+      "id": "order-tracking",
+      "name": "Order Tracking",
+      "category": "Order Tracking",
+      "scope": "Order tracking feature will work automatically in webview- No further configurations needed",
+      "limitations": null,
+      "requirements": [],
+      "documentationUrl": null
+    },
+    {
+      "id": "clickpost",
+      "name": "Clickpost",
+      "category": "Order Tracking",
+      "scope": "shares delivery info details to useDeliveryInfoByPincode hook",
+      "limitations": "It does not work as it is. Need theme level implementations",
+      "requirements": [
+        "1. ClickPost Username",
+        "2. ClickPost API Key"
+      ],
+      "documentationUrl": null
+    },
+    {
+      "id": "quickreply",
+      "name": "QuickReply",
+      "category": "Whatsapp Chat bot",
+      "scope": "Support chat widget \nWebview",
+      "limitations": "No extension present- Can use \"Open Webview\" action and provide the chat URL",
+      "requirements": [
+        "1. API Endpoint",
+        "2. Debounce Time",
+        "3. Company ID",
+        "4. Company Secret"
+      ],
+      "documentationUrl": null
+    },
+    {
+      "id": "limechat",
+      "name": "Limechat",
+      "category": "Whatsapp Chat bot",
+      "scope": "Support chat widget \nWebview",
+      "limitations": "No extension present- Can use \"Open Webview\" action and provide the chat URL",
+      "requirements": [],
+      "documentationUrl": null
+    },
+    {
+      "id": "freshchat",
+      "name": "Freshchat",
+      "category": "Whatsapp Chat bot",
+      "scope": "Support chat widget \nWebview\n\n( Need to use action OPEN_FRESHCHAT )",
+      "limitations": "No extension present- Can use \"Open Webview\" action and provide the chat URL",
+      "requirements": [
+        "1. App ID",
+        "2. App Key",
+        "3. Domain"
+      ],
+      "documentationUrl": null
+    }
+  ],
+  "categories": [
+    "Product Reviews",
+    "Analytics",
+    "Retention",
+    "MMP",
+    "Checkout",
+    "Shoppable Videos",
+    "Search and Filter",
+    "Login",
+    "Loyalty & Rewards",
+    "Upsell",
+    "Return Management",
+    "Kiwi Sizing",
+    "Gamification",
+    "Conversational Commerce WA Automation",
+    "Personlisation",
+    "Wishlist",
+    "Subscriptions",
+    "Order Tracking",
+    "Whatsapp Chat bot"
+  ],
+  "byCategory": {
+    "Product Reviews": [
+      {
+        "id": "judgeme-reviews",
+        "name": "Judgeme Reviews",
+        "category": "Product Reviews",
+        "scope": "1. Text and ratings and supported on the PDP\n2. Native implementation\n3. Show review count on PLP, PDP \n4. Show reviews at the bottom of PDP (with ratings, reviews & images)",
+        "limitations": null,
+        "requirements": [
+          "1. Public Key",
+          "2. Private Key",
+          "3. Shopify URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/judgeme"
+      },
+      {
+        "id": "loox-reviews",
+        "name": "Loox Reviews",
+        "category": "Product Reviews",
+        "scope": "1. Text and ratings and supported on the PDP\n2. Webview implementation\n3. Show reviews on a separate page (webview modal)",
+        "limitations": "Webview implementation\nPlan wise limitation from partner",
+        "requirements": [
+          "1. Shop Name",
+          "2. Loox ID"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/looxreview"
+      },
+      {
+        "id": "yotpo-reviews",
+        "name": "Yotpo Reviews",
+        "category": "Product Reviews",
+        "scope": "1. Text and ratings and supported on the PDP\n2. Native implementation\n3. Show review count on PLP, PDP \n4. Show reviews at the bottom of PDP (with ratings, reviews & images)",
+        "limitations": null,
+        "requirements": [
+          "1. Yopto App Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/yotpo"
+      },
+      {
+        "id": "stamped-reviews",
+        "name": "Stamped Reviews",
+        "category": "Product Reviews",
+        "scope": "1. Text and ratings and supported on the PDP\n2. Webview implementation\n3. Show reviews on a separate page (webview modal)",
+        "limitations": "Webview implementation\nOnly supported on PDP",
+        "requirements": [
+          "1. API Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/stamped-reviews"
+      }
+    ],
+    "Analytics": [
+      {
+        "id": "facebook-sdk",
+        "name": "Facebook SDK",
+        "category": "Analytics",
+        "scope": "1. Android and iOS app integrated via react-native-fbsdk\n2. Core app events (e.g., app activated, content viewed, purchases) tracked\n3. Events sent to Meta’s Events Manager for reporting and analytics",
+        "limitations": null,
+        "requirements": [
+          "1. App ID",
+          "2. Client ID"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/facebook-sdk"
+      },
+      {
+        "id": "firebase-analytics",
+        "name": "Firebase Analytics",
+        "category": "Analytics",
+        "scope": "1. Capture automatic lifecycle events (e.g. first_open, app_update)\n2. Send custom events to analyze feature usage and funnels\n3. Segment audiences for remarketing and performance tracking\n4. Export data to BigQuery for advanced analysis",
+        "limitations": "In-app notifications",
+        "requirements": [
+          "1. FCM key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/dashboard/push-notification"
+      },
+      {
+        "id": "microsoft-clarity",
+        "name": "Microsoft Clarity",
+        "category": "Analytics",
+        "scope": "1. Heatmaps (click, scroll, area): Visualize where users click, scroll depth, and engagement zones. Event tracking\n2. Session recordings: Watch anonymized user sessions to observe actual interactions, navigation steps, and potential pain points.",
+        "limitations": null,
+        "requirements": [
+          "1. Clarity Project ID"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/Clarity"
+      },
+      {
+        "id": "mixpanel",
+        "name": "Mixpanel",
+        "category": "Analytics",
+        "scope": "1. Capture automatic lifecycle events (e.g. first_open, app_update)- Basic events",
+        "limitations": "1.Time Event not supported",
+        "requirements": [
+          "1. Project Token"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/mixpanel"
+      },
+      {
+        "id": "deltax",
+        "name": "DeltaX",
+        "category": "Analytics",
+        "scope": "1. Real-time event tracking (iOS & Android)\n2. Cross-channel Tracking & Multi-touch Attribution\n3, Support for deep linking",
+        "limitations": null,
+        "requirements": [
+          "1. XB from Delta X"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/deltax"
+      },
+      {
+        "id": "uxcam",
+        "name": "UXcam",
+        "category": "Analytics",
+        "scope": "1. Heatmaps (click, scroll, area): Visualize where users click, scroll depth, and engagement zones. Event tracking\n2. Session recordings: Watch anonymized user sessions to observe actual interactions, navigation steps, and potential pain points.",
+        "limitations": null,
+        "requirements": [
+          "1. API KEY"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/Uxcam"
+      },
+      {
+        "id": "casa-crm",
+        "name": "Casa CRM",
+        "category": "Analytics",
+        "scope": "1. tracking key user and e-commerce events in the application. These events are originally captured in Appmaker and then brought into Casa for reporting, segmentation, and insights.",
+        "limitations": "1. Only event tracking",
+        "requirements": [],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/casa"
+      }
+    ],
+    "Retention": [
+      {
+        "id": "clevertap",
+        "name": "Clevertap",
+        "category": "Retention",
+        "scope": "1. Real-time event tracking (iOS & Android)\n2. Personalized push notifications & in-app messages\n3. Advanced user segmentation & audience targeting\n4. Pre-built campaign journeys (abandonment, re-engagement, onboarding)\n5. Support for deep linking, product recommendations, and more\n6. Cohort analysis and funnel tracking",
+        "limitations": "Interactive push notification (Will be available after the SDK upgrade to the latest version\nNative display",
+        "requirements": [
+          "1. Project ID",
+          "2. Project Token",
+          "3. Project Region"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/clevertap"
+      },
+      {
+        "id": "moengage",
+        "name": "Moengage",
+        "category": "Retention",
+        "scope": "Real-time event tracking from your Appmaker-powered app (Supports both iOS and Android)\nSend automated push notifications (transactional, campaign, and triggered)\nAudience segmentation based on in-app behavior\nCampaign automation workflows (cart abandonments, re-engagement, etc.)\nDeep linking support, Push Amplification\nPush Templates and In-App Notifications",
+        "limitations": null,
+        "requirements": [
+          "1. Moengage App ID",
+          "2. Moengage Data center number"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/moengage"
+      },
+      {
+        "id": "webengage",
+        "name": "Webengage",
+        "category": "Retention",
+        "scope": "Real-time event tracking from your Appmaker-powered app (iOS and Android)\nAutomated push notifications (transactional, campaign, and triggered)\nAudience segmentation based on in-app behavior\nCampaign workflows (abandon carts, re-engagement, etc.)\nDeep linking and in-app messaging\nPush and in-app templates",
+        "limitations": null,
+        "requirements": [
+          "1. Shop Name",
+          "2. Webengage license code",
+          "3. Webengage data center"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/webengage"
+      },
+      {
+        "id": "contlo",
+        "name": "Contlo",
+        "category": "Retention",
+        "scope": "Event tracking (e.g., add to cart, product viewed)\nPush notifications (Android, iOS)\nCampaign flows & analytics",
+        "limitations": null,
+        "requirements": [
+          "1. API Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/contlo"
+      },
+      {
+        "id": "klaviyo",
+        "name": "Klaviyo",
+        "category": "Retention",
+        "scope": "Automatically sync real-time user behavior into Klaviyo\nTrigger automated push and in-app notifications\nLeverage intelligent segmentation based on user actions\nUtilize Klaviyo’s native tools—rich push, silent push, badge management, deep links, and forms\nAlign mobile data with email/SMS journeys for a unified customer view",
+        "limitations": null,
+        "requirements": [
+          "1. Public API key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/klaviyo"
+      },
+      {
+        "id": "wigzo",
+        "name": "Wigzo",
+        "category": "Retention",
+        "scope": "1.Event tracking (e.g., add to cart, product viewed)\n2.Push notifications (Android, iOS)\n3.Campaign flows & analytics",
+        "limitations": null,
+        "requirements": [
+          "1.App ID",
+          "2. Site ID"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/wigzo"
+      }
+    ],
+    "MMP": [
+      {
+        "id": "appsflyer",
+        "name": "AppsFlyer",
+        "category": "MMP",
+        "scope": "Mobile Attribution:Accurately attribute installs to marketing campaigns.\nCustom Event Tracking: Monitor user actions like purchases, sign-ups, and more.\nRetention and Funnel Metrics: Measure user retention and optimize conversion funnels.\nReal-Time Reporting: Access real-time insights in the Appsflyer dashboard.\nIntegrations with Advertising Networks:Connect with platforms like Facebook, Google, and more.\nOne link functionality",
+        "limitations": null,
+        "requirements": [
+          "1. Dev Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/appsflyer"
+      },
+      {
+        "id": "adjust",
+        "name": "Adjust",
+        "category": "MMP",
+        "scope": "Mobile Attribution:Accurately attribute installs to marketing campaigns.\nCustom Event Tracking: Monitor user actions like purchases, sign-ups, and more.\nRetention and Funnel Metrics: Measure user retention and optimize conversion funnels.\nReal-Time Reporting: Access real-time insights in the Appsflyer dashboard.\nIntegrations with Advertising Networks:Connect with platforms like Facebook, Google, and more.\nOne link functionality",
+        "limitations": null,
+        "requirements": [
+          "1. Android App Token",
+          "2. iOS App Token"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/adjust"
+      },
+      {
+        "id": "apptrove-trackier",
+        "name": "AppTrove (Trackier)",
+        "category": "MMP",
+        "scope": "Mobile Attribution:Accurately attribute installs to marketing campaigns.\nCustom Event Tracking: Monitor user actions like purchases, sign-ups, and more.\nRetention and Funnel Metrics: Measure user retention and optimize conversion funnels.\nReal-Time Reporting: Access real-time insights in the Appsflyer dashboard.\nIntegrations with Advertising Networks:Connect with platforms like Facebook, Google, and more.",
+        "limitations": "- Deeplinking functionality (ongoing implementation for Mcaffeine)",
+        "requirements": [
+          "1. SDK/App Key for Android (Required)",
+          "2. SDK Signing Secret ID for Android",
+          "3. SDK Signing Key for Android",
+          "4. SDK/App Key for iOS (Required)",
+          "5. SDK Signing Secret ID for iOS",
+          "6. SDK Signing Key for iOS",
+          "7. ATTUserAuthorization Time(Seconds)",
+          "8. Deeplinking URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/apptrove"
+      }
+    ],
+    "Checkout": [
+      {
+        "id": "shopflo-login-checkout",
+        "name": "Shopflo Login & Checkout",
+        "category": "Checkout",
+        "scope": "- Login and checkout\n-One click checkout\n- Reverse login functionality\n-Unifiied login for app and checkout",
+        "limitations": "- Checkout- Webview Integration",
+        "requirements": [],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/shopflo"
+      },
+      {
+        "id": "kwikpass-v2",
+        "name": "Kwikpass V2",
+        "category": "Checkout",
+        "scope": "- Login and checkout\n-One click checkout\n- Reverse login functionality\n-Unifiied login for app and checkout",
+        "limitations": "- Checkout- Webview Integration",
+        "requirements": [
+          "1. Merchant ID",
+          "2. Store Domain Url",
+          "3. Environment"
+        ],
+        "documentationUrl": null
+      },
+      {
+        "id": "razorpay-checkout-payments-magic-magicx",
+        "name": "Razorpay Checkout - Payments, Magic, MagicX",
+        "category": "Checkout",
+        "scope": "- Normal shopify checkout-Payment gateways powered by razorpay",
+        "limitations": "Webview Implementation",
+        "requirements": [
+          "1. Razorpay Live Key (ONLY FOR MAGIC CHECKOUT)",
+          "2. Store URL (ONLY FOR MAGICX CHECKOUT)",
+          "3. [Experimental] For Standard Checkout with MagicX",
+          "4. Additional Config for Standard Checkout"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/razorpay"
+      },
+      {
+        "id": "shiprocket-checkout-fastrr",
+        "name": "Shiprocket Checkout (Fastrr)",
+        "category": "Checkout",
+        "scope": "1. One click checkout",
+        "limitations": "Webview Implementation",
+        "requirements": [
+          "1. Domain Name"
+        ],
+        "documentationUrl": " https://docs.appmaker.xyz/docs/integrations/fastrrcheckout"
+      },
+      {
+        "id": "simpl-checkout",
+        "name": "Simpl Checkout",
+        "category": "Checkout",
+        "scope": "1. One Click checkout",
+        "limitations": "Webview Implementation",
+        "requirements": [
+          "1. Environment"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/simpl"
+      },
+      {
+        "id": "pragma-1checkout-logisy",
+        "name": "Pragma 1Checkout (Logisy)",
+        "category": "Checkout",
+        "scope": "1. One click checkout",
+        "limitations": "Webview Implementation",
+        "requirements": [
+          "1. Sample Name"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/pragma"
+      }
+    ],
+    "Shoppable Videos": [
+      {
+        "id": "quinn-shoppable-videos",
+        "name": "Quinn - Shoppable Videos",
+        "category": "Shoppable Videos",
+        "scope": "1. Video widget on homepage, \n2. floating widget on PDP\n3. Story Block (Homepage,PLP,PDP)\n4. Add to cart functionality from Video Widgets\n5. Native Implentation",
+        "limitations": null,
+        "requirements": [
+          "1. Config",
+          "2. Global",
+          "3. Widgets"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/quinn"
+      },
+      {
+        "id": "whatmore-shoppable-videos",
+        "name": "Whatmore Shoppable Videos",
+        "category": "Shoppable Videos",
+        "scope": "1. Video widget on homepage\n2. Native Implementation",
+        "limitations": "1. No story block support\n2. Only Homepage video block support",
+        "requirements": [
+          "1. Shopify Store ID"
+        ],
+        "documentationUrl": null
+      },
+      {
+        "id": "live2-ai",
+        "name": "Live2.AI",
+        "category": "Shoppable Videos",
+        "scope": "1. Video widget on homepage, \n2. floating widget on PDP\n3. Story Block (Homepage,PLP,PDP)\n4. Add to cart functionality from Video Widgets\n5. Native Implentation",
+        "limitations": null,
+        "requirements": [
+          "1. Live2.ai Auth Code"
+        ],
+        "documentationUrl": null
+      },
+      {
+        "id": "lively-vudio",
+        "name": "Lively(Vudio)",
+        "category": "Shoppable Videos",
+        "scope": "1. Video widget on homepage, \n3. Story Block (Homepage,PLP,PDP)\n4. Add to cart functionality from Video Widgets\n5. Native Implentation",
+        "limitations": null,
+        "requirements": [
+          "1.  Lively Company id"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/lively"
+      },
+      {
+        "id": "reelup-shoppable-videos",
+        "name": "ReelUp - Shoppable Videos",
+        "category": "Shoppable Videos",
+        "scope": "1. Video widget on homepage,",
+        "limitations": "1. No story block support\n2. Only Homepage video block support",
+        "requirements": [
+          "1. API Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/reelup"
+      }
+    ],
+    "Search and Filter": [
+      {
+        "id": "shopify-search-discovery",
+        "name": "Shopify Search & Discovery",
+        "category": "Search and Filter",
+        "scope": "1. Search\n2. Product suggestions\n3. Default collection filters",
+        "limitations": "1.Only serach functionality. Do not power collections",
+        "requirements": [],
+        "documentationUrl": null
+      },
+      {
+        "id": "searchtap",
+        "name": "Searchtap",
+        "category": "Search and Filter",
+        "scope": "Product suggestions, Category suggestions, search filters",
+        "limitations": "1.Only serach functionality. Do not power collections",
+        "requirements": [
+          "1. URL",
+          "2. Auth Token",
+          "3. Search Collection"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/searchtap"
+      },
+      {
+        "id": "wizzy",
+        "name": "Wizzy",
+        "category": "Search and Filter",
+        "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+        "limitations": null,
+        "requirements": [
+          "1. Shopify online store (URL)",
+          "2. Wizzy api endpoint",
+          "3. API KEY",
+          "4. STORE ID"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/Wizzy"
+      },
+      {
+        "id": "boostcommerce",
+        "name": "BoostCommerce",
+        "category": "Search and Filter",
+        "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+        "limitations": null,
+        "requirements": [
+          "1. MyShopify URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/boostcommerce"
+      },
+      {
+        "id": "argoid",
+        "name": "Argoid",
+        "category": "Search and Filter",
+        "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+        "limitations": null,
+        "requirements": [
+          "1. Argoid app id",
+          "2. Authorization key",
+          "3. Events Authorization key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/argoid"
+      },
+      {
+        "id": "visenze-ai-search-recommend",
+        "name": "ViSenze AI Search & Recommend",
+        "category": "Search and Filter",
+        "scope": "- Shop the look\n- Pair it with\n- Similar products",
+        "limitations": "No search functionality",
+        "requirements": [
+          "1. App key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/ViSenze%20AI%20Search%20&%20Recommend"
+      },
+      {
+        "id": "zevi-ai",
+        "name": "Zevi-ai",
+        "category": "Search and Filter",
+        "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+        "limitations": null,
+        "requirements": [
+          "1. MyShopify URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/zevi.ai"
+      },
+      {
+        "id": "findify",
+        "name": "Findify",
+        "category": "Search and Filter",
+        "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+        "limitations": null,
+        "requirements": [
+          "1.Findify Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/findify"
+      },
+      {
+        "id": "unboxd",
+        "name": "Unboxd",
+        "category": "Search and Filter",
+        "scope": "Product suggestions, Category suggestions, filters, collection and search, Search filters",
+        "limitations": null,
+        "requirements": [
+          "1. Unboxd key",
+          "2.Base URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/unboxd"
+      }
+    ],
+    "Login": [
+      {
+        "id": "lucent-simply-otp",
+        "name": "Lucent Simply OTP",
+        "category": "Login",
+        "scope": "Otp Login\nAvialable for non plus users",
+        "limitations": null,
+        "requirements": [
+          "1. Shop Name"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/lucent"
+      },
+      {
+        "id": "simplify-my-login",
+        "name": "Simplify My Login",
+        "category": "Login",
+        "scope": "Otp Login- Available for non plus users, outside India availability",
+        "limitations": null,
+        "requirements": [
+          "1. Store Name",
+          "2. SML API Key",
+          "3. Default country code"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/simplyotp"
+      },
+      {
+        "id": "codfirm-otp-login-cashfree",
+        "name": "CODFIRM OTP Login (Cashfree)",
+        "category": "Login",
+        "scope": "Otp Login",
+        "limitations": null,
+        "requirements": [
+          "1.  shopify store url"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/codfirm"
+      },
+      {
+        "id": "google-login",
+        "name": "Google Login",
+        "category": "Login",
+        "scope": "Social login- firebase- Free of cost",
+        "limitations": null,
+        "requirements": [
+          "1. Firebase project"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/googlelogin"
+      },
+      {
+        "id": "apple-login",
+        "name": "Apple Login",
+        "category": "Login",
+        "scope": "Social login- firebase- Free of cost",
+        "limitations": null,
+        "requirements": [
+          "1. Firebase project",
+          "2. Apple developer account access"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/applelogin"
+      }
+    ],
+    "Loyalty & Rewards": [
+      {
+        "id": "nector-loyalty-rewards",
+        "name": "Nector: Loyalty & Rewards",
+        "category": "Loyalty & Rewards",
+        "scope": "Loyalty, Rewards, Referrals",
+        "limitations": "Webview integration",
+        "requirements": [
+          "1. API Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/nector"
+      },
+      {
+        "id": "smile-io",
+        "name": "Smile-io",
+        "category": "Loyalty & Rewards",
+        "scope": "Loyalty, Rewards, Referrals",
+        "limitations": "1. Webview integration\n2. Smile Pro Plan or higher in order to access API keys",
+        "requirements": [
+          "1. Channel key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/smileio"
+      },
+      {
+        "id": "popcoins",
+        "name": "POPCoins",
+        "category": "Loyalty & Rewards",
+        "scope": "Loyalty, Rewards, Referrals, Supports reward coin application on PLP, PDP and cart",
+        "limitations": null,
+        "requirements": [
+          "1.Shopify Store Name",
+          "2. Shopify Name"
+        ],
+        "documentationUrl": null
+      },
+      {
+        "id": "loyaltylion",
+        "name": "LoyaltyLion",
+        "category": "Loyalty & Rewards",
+        "scope": "Loyalty, Rewards, Referrals",
+        "limitations": "Webview integration",
+        "requirements": [
+          "1. Token"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/loyaltylion"
+      },
+      {
+        "id": "kangaroo-rewards",
+        "name": "Kangaroo Rewards",
+        "category": "Loyalty & Rewards",
+        "scope": "Loyalty, Rewards, Referrals\n- Float button",
+        "limitations": "Webview integration",
+        "requirements": [
+          "1. JWT Secret"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/kangaroo"
+      }
+    ],
+    "Upsell": [
+      {
+        "id": "glood-ai",
+        "name": "Glood.AI",
+        "category": "Upsell",
+        "scope": "product recommendations on PDP and cart page",
+        "limitations": null,
+        "requirements": [],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/glood"
+      },
+      {
+        "id": "ufe-cross-sell-upsell-bundle",
+        "name": "UFE Cross Sell & Upsell Bundle",
+        "category": "Upsell",
+        "scope": "product bundle on PDP",
+        "limitations": null,
+        "requirements": [
+          "1.Store link"
+        ],
+        "documentationUrl": null
+      }
+    ],
+    "Return Management": [
+      {
+        "id": "return-prime",
+        "name": "Return Prime",
+        "category": "Return Management",
+        "scope": "1. Returnprime App helps you manage all your returns, exchange and refunds at one place. \n2. Webview Integration",
+        "limitations": "Webview integration",
+        "requirements": [
+          "1. Channel ID",
+          "2. Shopify Store URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/returnprime"
+      }
+    ],
+    "Kiwi Sizing": [
+      {
+        "id": "kiwi-sizing",
+        "name": "Kiwi Sizing",
+        "category": "Kiwi Sizing",
+        "scope": "1. Size chart supported in PDP- webview",
+        "limitations": "Webview integration",
+        "requirements": [
+          "1. Size Chart URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/kiwi"
+      }
+    ],
+    "Gamification": [
+      {
+        "id": "engagebud",
+        "name": "Engagebud",
+        "category": "Gamification",
+        "scope": "1. Game widget available to be added on the homepage- Webview integration",
+        "limitations": "Webview integration",
+        "requirements": [
+          "1. Game URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/Actions/engagebud-integration"
+      }
+    ],
+    "Conversational Commerce WA Automation": [
+      {
+        "id": "bitespeed",
+        "name": "Bitespeed",
+        "category": "Conversational Commerce WA Automation",
+        "scope": "Event tracking ( login, register, cartCreated, productViewed )\nPush notifications ( I can see the code, not sure its functional )",
+        "limitations": null,
+        "requirements": [
+          "1. Bitespeed API Key",
+          "2. Shopify store base URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/bitespeed"
+      },
+      {
+        "id": "bik",
+        "name": "BIK",
+        "category": "Conversational Commerce WA Automation",
+        "scope": "Event tracking ( addToCart, productViewed,addedToWishlist,keywordSearched)",
+        "limitations": "No push notification",
+        "requirements": [
+          "1. Shopify Url"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/bik"
+      }
+    ],
+    "Personlisation": [
+      {
+        "id": "wiser",
+        "name": "Wiser",
+        "category": "Personlisation",
+        "scope": "Below are the widgets powered :\n1. New arrivals\n2. FBT\n3. Related products\n4. cart recommendations\n\nBut insertion of these blocks has to be done theme level. Extension alone cannot add the scrollers to app",
+        "limitations": "Insertion of these blocks has to be done theme level. Extension alone cannot add the scrollers to app",
+        "requirements": [
+          "1. Partner Name",
+          "2. Secret Key",
+          "3. Shop Name"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/wiser"
+      },
+      {
+        "id": "rebuy",
+        "name": "Rebuy",
+        "category": "Personlisation",
+        "scope": "product scroller on PDP , cart",
+        "limitations": "Not sure whether it works for other merchants. It was only used for clinically. Integrated by ecom ethos",
+        "requirements": [
+          "1. Rebuy API Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/rebuy"
+      }
+    ],
+    "Wishlist": [
+      {
+        "id": "swym-wishlist-plus",
+        "name": "Swym Wishlist Plus",
+        "category": "Wishlist",
+        "scope": "Sync wishlists between mobile app and web",
+        "limitations": "It requires theme changes like managing wishlist actions",
+        "requirements": [
+          "1. pid",
+          "2. Swym API Endpoint",
+          "3. API Key"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/swym"
+      }
+    ],
+    "Subscriptions": [
+      {
+        "id": "recurpay-subscription",
+        "name": "Recurpay Subscription",
+        "category": "Subscriptions",
+        "scope": "Subscription details on PDP\nsubscription products has custom checkout",
+        "limitations": null,
+        "requirements": [
+          "1. API URL"
+        ],
+        "documentationUrl": "https://docs.appmaker.xyz/docs/integrations/recurpay"
+      }
+    ],
+    "Order Tracking": [
+      {
+        "id": "order-tracking",
+        "name": "Order Tracking",
+        "category": "Order Tracking",
+        "scope": "Order tracking feature will work automatically in webview- No further configurations needed",
+        "limitations": null,
+        "requirements": [],
+        "documentationUrl": null
+      },
+      {
+        "id": "clickpost",
+        "name": "Clickpost",
+        "category": "Order Tracking",
+        "scope": "shares delivery info details to useDeliveryInfoByPincode hook",
+        "limitations": "It does not work as it is. Need theme level implementations",
+        "requirements": [
+          "1. ClickPost Username",
+          "2. ClickPost API Key"
+        ],
+        "documentationUrl": null
+      }
+    ],
+    "Whatsapp Chat bot": [
+      {
+        "id": "quickreply",
+        "name": "QuickReply",
+        "category": "Whatsapp Chat bot",
+        "scope": "Support chat widget \nWebview",
+        "limitations": "No extension present- Can use \"Open Webview\" action and provide the chat URL",
+        "requirements": [
+          "1. API Endpoint",
+          "2. Debounce Time",
+          "3. Company ID",
+          "4. Company Secret"
+        ],
+        "documentationUrl": null
+      },
+      {
+        "id": "limechat",
+        "name": "Limechat",
+        "category": "Whatsapp Chat bot",
+        "scope": "Support chat widget \nWebview",
+        "limitations": "No extension present- Can use \"Open Webview\" action and provide the chat URL",
+        "requirements": [],
+        "documentationUrl": null
+      },
+      {
+        "id": "freshchat",
+        "name": "Freshchat",
+        "category": "Whatsapp Chat bot",
+        "scope": "Support chat widget \nWebview\n\n( Need to use action OPEN_FRESHCHAT )",
+        "limitations": "No extension present- Can use \"Open Webview\" action and provide the chat URL",
+        "requirements": [
+          "1. App ID",
+          "2. App Key",
+          "3. Domain"
+        ],
+        "documentationUrl": null
+      }
+    ]
+  }
+}

@@ -6,14 +6,17 @@ import { Sidebar } from '@/components/Sidebar';
 import { Toast } from '@/components/Toast';
 import { Loading } from '@/components/Loading';
 import { Skeleton } from '@/components/Skeleton';
-import { getChecklistConfig, updateChecklistConfig } from '@/lib/firebase/firestore';
-import { ChecklistConfig } from '@/types';
+import { getChecklistConfig, updateChecklistConfig, getIntegrations, updateIntegrations } from '@/lib/firebase/firestore';
+import { ChecklistConfig, Integration } from '@/types';
 
 export default function SettingsPage() {
   const [config, setConfig] = useState<ChecklistConfig | null>(null);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingIntegrations, setSavingIntegrations] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const [integrationsError, setIntegrationsError] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -24,7 +27,10 @@ export default function SettingsPage() {
 
   const loadConfig = async () => {
     try {
-      const configData = await getChecklistConfig();
+      const [configData, integrationsData] = await Promise.all([
+        getChecklistConfig(),
+        getIntegrations(),
+      ]);
       if (configData) {
         setConfig(configData);
       } else {
@@ -73,6 +79,7 @@ export default function SettingsPage() {
           ],
         });
       }
+      setIntegrations(integrationsData);
     } catch (error) {
       console.error('Error loading config:', error);
     } finally {
@@ -116,6 +123,50 @@ export default function SettingsPage() {
       setJsonError(null);
     } catch (error) {
       setJsonError('Invalid JSON');
+    }
+  };
+
+  const handleIntegrationsJsonChange = (value: string) => {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        setIntegrations(parsed);
+        setIntegrationsError(null);
+      } else {
+        setIntegrationsError('Integrations must be an array');
+      }
+    } catch (error) {
+      setIntegrationsError('Invalid JSON');
+    }
+  };
+
+  const handleSaveIntegrations = async () => {
+    if (!integrations || integrations.length === 0) {
+      setToastMessage('No integrations to save');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    setIntegrationsError(null);
+    setSavingIntegrations(true);
+
+    try {
+      console.log('Saving integrations:', integrations.length, 'items');
+      await updateIntegrations(integrations);
+      console.log('Integrations saved successfully');
+      setToastMessage(`Successfully saved ${integrations.length} integrations!`);
+      setToastType('success');
+      setShowToast(true);
+    } catch (error: any) {
+      console.error('Error saving integrations:', error);
+      const errorMessage = error.message || 'Failed to save integrations';
+      setIntegrationsError(errorMessage);
+      setToastMessage(errorMessage);
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setSavingIntegrations(false);
     }
   };
 
@@ -282,6 +333,101 @@ export default function SettingsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       Save Configuration
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Integrations JSON Editor */}
+          <div className="card p-6 mt-6">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 mb-1">Integrations Configuration</h2>
+                <p className="text-sm text-gray-600">Manage the list of available integrations for the launch checklist</p>
+              </div>
+              {integrations && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  {integrations.length} integrations
+                </div>
+              )}
+            </div>
+
+            <div className="mb-6">
+              <div className="relative">
+                <textarea
+                  value={JSON.stringify(integrations, null, 2)}
+                  onChange={(e) => handleIntegrationsJsonChange(e.target.value)}
+                  rows={30}
+                  className={`w-full px-4 py-3 border-2 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 transition-all ${
+                    integrationsError 
+                      ? 'border-red-300 bg-red-50 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-200 bg-gray-50 focus:ring-gray-900 focus:border-gray-900'
+                  }`}
+                  spellCheck={false}
+                />
+                {!integrationsError && (
+                  <div className="absolute top-3 right-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  </div>
+                )}
+              </div>
+              {integrationsError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                  <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-semibold text-red-900 mb-1">Invalid JSON</p>
+                    <p className="text-sm text-red-700">{integrationsError}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+              <div className="text-sm text-gray-500">
+                {integrations && (
+                  <span>
+                    {integrations.length} integration{integrations.length !== 1 ? 's' : ''} configured
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    loadConfig();
+                    setIntegrationsError(null);
+                  }}
+                  className="btn-secondary"
+                  disabled={!integrationsError}
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={handleSaveIntegrations}
+                  disabled={savingIntegrations || !!integrationsError}
+                  className="btn-primary min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingIntegrations ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Save Integrations
                     </span>
                   )}
                 </button>

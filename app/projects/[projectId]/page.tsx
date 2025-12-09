@@ -11,9 +11,8 @@ import { Loading } from '@/components/Loading';
 import { Skeleton } from '@/components/Skeleton';
 import { StatusDropdown } from '@/components/StatusDropdown';
 import { EmailModal } from '@/components/EmailModal';
-import { getProject, getChecklistConfig, updateProject, flattenFields } from '@/lib/firebase/firestore';
-import { generateMissingInfoEmail } from '@/lib/email/generateEmail';
-import { Project, ChecklistConfig, ProjectStatus } from '@/types';
+import { getProject, getChecklistConfig, updateProject, flattenFields, getIntegrations } from '@/lib/firebase/firestore';
+import { Project, ChecklistConfig, ProjectStatus, Integration } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProjectDetailPage() {
@@ -27,7 +26,7 @@ export default function ProjectDetailPage() {
   const [salesExpanded, setSalesExpanded] = useState(false);
   const [launchExpanded, setLaunchExpanded] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const [generatedEmail, setGeneratedEmail] = useState<any>(null);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -38,9 +37,10 @@ export default function ProjectDetailPage() {
 
   const loadProject = async () => {
     try {
-      const [projectData, configData] = await Promise.all([
+      const [projectData, configData, integrationsData] = await Promise.all([
         getProject(projectId),
         getChecklistConfig(),
+        getIntegrations(),
       ]);
       
       if (!projectData) {
@@ -49,6 +49,7 @@ export default function ProjectDetailPage() {
       }
       setProject(projectData);
       setConfig(configData);
+      setIntegrations(integrationsData);
     } catch (error) {
       console.error('Error loading project:', error);
     } finally {
@@ -60,20 +61,37 @@ export default function ProjectDetailPage() {
     if (!project) return;
     
     try {
-      await updateProject(projectId, { status: newStatus });
-      setProject({ ...project, status: newStatus });
+      const updates: Partial<Project> = { status: newStatus };
+      
+      // Auto-set completion date when status changes to Live
+      if (newStatus === 'Live' && !project.completionDate) {
+        updates.completionDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      }
+      
+      await updateProject(projectId, updates);
+      setProject({ ...project, ...updates });
     } catch (error) {
       console.error('Error updating project status:', error);
     }
   };
 
+  const handleDateChange = async (field: 'handoverDate' | 'completionDate', value: string) => {
+    if (!project) return;
+    
+    try {
+      const updates: Partial<Project> = {
+        [field]: value || null,
+      };
+      
+      await updateProject(projectId, updates);
+      setProject({ ...project, ...updates });
+    } catch (error) {
+      console.error(`Error updating ${field}:`, error);
+    }
+  };
+
   const handleGenerateEmail = () => {
     if (!project || !config) return;
-    
-    // Get user name from auth context, fallback to default
-    const userName = user?.displayName || user?.email?.split('@')[0] || 'Appmaker Team';
-    const email = generateMissingInfoEmail(project, config, userName);
-    setGeneratedEmail(email);
     setEmailModalOpen(true);
   };
 
@@ -112,11 +130,92 @@ export default function ProjectDetailPage() {
     }
   };
   
+  // Helper to check integration requirements
+  const checkIntegrationRequirements = (
+    selectedIntegrationIds: string[],
+    reqStatus: Record<string, Record<string, boolean>>,
+    integs: Integration[]
+  ): boolean => {
+    if (!Array.isArray(selectedIntegrationIds) || selectedIntegrationIds.length === 0) {
+      return false;
+    }
+    
+    // Check each selected integration
+    for (const integrationId of selectedIntegrationIds) {
+      const integration = integs.find(integ => integ.id === integrationId);
+      if (!integration) continue;
+      
+      // If integration has requirements, all must be checked
+      if (integration.requirements && integration.requirements.length > 0) {
+        const status = reqStatus[integrationId] || {};
+        const allChecked = integration.requirements.every(req => status[req] === true);
+        if (!allChecked) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  };
+
+  // Helper to get requirement status for a field
+  const getRequirementStatus = (field: any, isSales: boolean) => {
+    if (field.isSubField && field.groupId) {
+      // It's a sub-field in a group
+      const groupValue = isSales 
+        ? project?.checklists.sales[field.groupId]
+        : project?.checklists.launch[field.groupId];
+      return groupValue?.[`${field.id}_requirementStatus`] || {};
+    } else {
+      // Regular field
+      const checklist = isSales ? project?.checklists.sales : project?.checklists.launch;
+      return checklist?.[`${field.id}_requirementStatus`] || {};
+    }
+  };
+
+  // Helper to check if a field is marked as not relevant
+  const isFieldNotRelevant = (field: any, isSales: boolean): boolean => {
+    const checklist = isSales ? project?.checklists.sales : project?.checklists.launch;
+    
+    if (field.isSubField && field.groupId) {
+      // It's a sub-field in a group
+      // First check if the parent group itself is marked as not relevant
+      if (checklist?.[`${field.groupId}_notRelevant`] === true) {
+        return true;
+      }
+      // Then check for not relevant flag on the subfield itself: groupId[subFieldId_notRelevant]
+      const groupValue = checklist?.[field.groupId];
+      if (groupValue && typeof groupValue === 'object') {
+        return groupValue[`${field.id}_notRelevant`] === true;
+      }
+      return false;
+    } else {
+      // Regular field - check for fieldId_notRelevant
+      return checklist?.[`${field.id}_notRelevant`] === true;
+    }
+  };
+
   // Helper to check if field is completed
-  const isFieldCompleted = (field: any, value: any) => {
+  const isFieldCompleted = (field: any, value: any, isSales: boolean = false) => {
     if (value === null || value === undefined || value === '') return false;
     if (field.type === 'checkbox') return value === true;
-    if (field.type === 'multi_input') return Array.isArray(value) && value.length > 0;
+    if (field.type === 'multi_input') {
+      // For launch checklist, all items must be filled
+      if (!isSales) {
+        return Array.isArray(value) && value.length > 0 && value.every(item => item && item.toString().trim() !== '');
+      }
+      return Array.isArray(value) && value.length > 0;
+    }
+    if (field.type === 'multi_select') {
+      // For launch checklist with integrations, check requirement status
+      if (!isSales && field.optionsSource === 'integrations') {
+        const selectedIds = Array.isArray(value) ? value : [];
+        const reqStatus = getRequirementStatus(field, isSales);
+        return checkIntegrationRequirements(selectedIds, reqStatus, integrations);
+      }
+      // For sales or non-integration multi_select, just check if items are selected
+      return Array.isArray(value) && value.length > 0;
+    }
     return value && value.toString().trim() !== '';
   };
 
@@ -185,6 +284,44 @@ export default function ProjectDetailPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
+                  {/* Date Selectors */}
+                  <div className="flex items-center gap-4 px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                          Handover
+                        </label>
+                      </div>
+                      <input
+                        type="date"
+                        value={project.handoverDate || ''}
+                        onChange={(e) => handleDateChange('handoverDate', e.target.value)}
+                        className="px-3 py-1.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150"
+                      />
+                    </div>
+                    <div className="w-px h-7 bg-gray-200"></div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                          Completion
+                        </label>
+                      </div>
+                      <input
+                        type="date"
+                        value={project.completionDate || ''}
+                        onChange={(e) => handleDateChange('completionDate', e.target.value)}
+                        className="px-3 py-1.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150"
+                        title={project.status === 'Live' && !project.completionDate ? 'Auto-set when marked as Live' : ''}
+                      />
+                    </div>
+                  </div>
+                  
                   <button
                     onClick={handleGenerateEmail}
                     className="btn-primary inline-flex items-center gap-2"
@@ -192,7 +329,7 @@ export default function ProjectDetailPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    Generate Missing Info Email
+                    Generate Email
                   </button>
                   <StatusDropdown
                     status={project.status || 'Not Started'}
@@ -213,7 +350,7 @@ export default function ProjectDetailPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                     <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                   </div>
                 </div>
@@ -229,7 +366,7 @@ export default function ProjectDetailPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                     <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
                 </div>
@@ -245,7 +382,7 @@ export default function ProjectDetailPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                     <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
                 </div>
@@ -264,7 +401,7 @@ export default function ProjectDetailPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                 </div>
                 <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-900 transition-colors duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,8 +412,7 @@ export default function ProjectDetailPage() {
                 <div className="flex flex-col items-center justify-center mt-8 mb-4">
                   <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-3">
                     <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
                   </div>
                   <p className="text-sm text-gray-600 text-center">View complete handover report</p>
@@ -325,9 +461,9 @@ export default function ProjectDetailPage() {
             const flattenedSales = flattenFields(config.sales);
             const flattenedLaunch = flattenFields(config.launch);
             
-            const completedSales = flattenedSales.filter(f => !f.optional && isFieldCompleted(f, getFieldValue(f, true))).length;
+            const completedSales = flattenedSales.filter(f => !f.optional && isFieldCompleted(f, getFieldValue(f, true), true)).length;
             const totalSales = flattenedSales.filter(f => !f.optional).length;
-            const completedLaunch = flattenedLaunch.filter(f => !f.optional && isFieldCompleted(f, getFieldValue(f, false))).length;
+            const completedLaunch = flattenedLaunch.filter(f => !f.optional && isFieldCompleted(f, getFieldValue(f, false), false)).length;
             const totalLaunch = flattenedLaunch.filter(f => !f.optional).length;
             
             return (
@@ -337,7 +473,7 @@ export default function ProjectDetailPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                         <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                         </svg>
                       </div>
                       <h3 className="text-lg font-bold text-gray-900">Sales Checklist Status</h3>
@@ -349,11 +485,17 @@ export default function ProjectDetailPage() {
                   <div className={`space-y-2 scrollbar-hide ${salesExpanded ? 'max-h-none' : 'max-h-80 overflow-y-auto'}`}>
                     {(salesExpanded ? flattenedSales : flattenedSales.slice(0, 10)).map((field) => {
                       const value = getFieldValue(field, true);
+                      const reqStatus = getRequirementStatus(field, true);
+                      const notRelevant = isFieldNotRelevant(field, true);
                       return (
                         <div key={field.isSubField ? `${field.groupId}-${field.id}` : field.id} className="p-3 rounded-lg hover:bg-gray-50 transition-colors">
                           <ChecklistStatus
                             field={field}
                             value={value}
+                            requirementStatus={reqStatus}
+                            isLaunch={false}
+                            integrations={integrations}
+                            notRelevant={notRelevant}
                           />
                         </div>
                       );
@@ -399,7 +541,7 @@ export default function ProjectDetailPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
                         <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                         </svg>
                       </div>
                       <h3 className="text-lg font-bold text-gray-900">Launch Checklist Status</h3>
@@ -411,11 +553,17 @@ export default function ProjectDetailPage() {
                   <div className={`space-y-2 scrollbar-hide ${launchExpanded ? 'max-h-none' : 'max-h-80 overflow-y-auto'}`}>
                     {(launchExpanded ? flattenedLaunch : flattenedLaunch.slice(0, 10)).map((field) => {
                       const value = getFieldValue(field, false);
+                      const reqStatus = getRequirementStatus(field, false);
+                      const notRelevant = isFieldNotRelevant(field, false);
                       return (
                         <div key={field.isSubField ? `${field.groupId}-${field.id}` : field.id} className="p-3 rounded-lg hover:bg-gray-50 transition-colors">
                           <ChecklistStatus
                             field={field}
                             value={value}
+                            requirementStatus={reqStatus}
+                            isLaunch={true}
+                            integrations={integrations}
+                            notRelevant={notRelevant}
                           />
                         </div>
                       );
@@ -512,7 +660,9 @@ export default function ProjectDetailPage() {
       </div>
       <EmailModal
         isOpen={emailModalOpen}
-        generatedEmail={generatedEmail}
+        project={project}
+        config={config}
+        userName={user?.displayName || user?.email?.split('@')[0] || 'Appmaker Team'}
         onClose={() => setEmailModalOpen(false)}
       />
     </AuthGuard>

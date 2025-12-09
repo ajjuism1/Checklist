@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -40,9 +41,23 @@ export default function DashboardPage() {
   };
 
   const filteredProjects = projects.filter((project) => {
-    if (filter === 'completed') return project.progress.overall === 100;
-    if (filter === 'active') return project.progress.overall < 100;
-    return true;
+    // First apply completion filter
+    let matchesCompletionFilter = true;
+    if (filter === 'completed') {
+      // A project is completed if status is 'Completed' OR progress is 100%
+      matchesCompletionFilter = project.status === 'Completed' || project.progress.overall === 100;
+    } else if (filter === 'active') {
+      // Active projects are those that are not completed
+      matchesCompletionFilter = project.status !== 'Completed' && project.progress.overall < 100;
+    }
+    
+    // Then apply status filter
+    let matchesStatusFilter = true;
+    if (statusFilter !== 'all') {
+      matchesStatusFilter = project.status === statusFilter;
+    }
+    
+    return matchesCompletionFilter && matchesStatusFilter;
   });
 
   const activeProjects = projects.filter((p) => p.progress.overall < 100).length;
@@ -179,7 +194,8 @@ export default function DashboardPage() {
             </div>
 
             {/* Filters */}
-            <div className="mb-6 flex gap-2">
+            <div className="mb-6 flex flex-wrap items-center gap-3">
+              <div className="flex gap-2">
               <button
                 onClick={() => setFilter('all')}
                 className={`px-5 py-2.5 rounded-xl font-semibold transition-all duration-150 ${
@@ -210,6 +226,25 @@ export default function DashboardPage() {
               >
                 Completed
               </button>
+              </div>
+              
+              <div className="h-6 w-px bg-gray-300"></div>
+              
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Status:</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150 cursor-pointer min-w-[160px]"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Not Started">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="On HOLD">On HOLD</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Live">Live</option>
+                </select>
+              </div>
             </div>
 
             {/* Projects Table */}
@@ -259,25 +294,28 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-gray-900 text-lg font-semibold mb-2">No projects found</p>
                 <p className="text-gray-500 text-sm mb-6">Try adjusting your filters or create a new project</p>
-                <Link href="/projects" className="btn-primary inline-flex items-center gap-2">
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn-primary inline-flex items-center gap-2"
+                >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Create Project
-                </Link>
+                </button>
               </div>
             ) : (
-              <div className="card overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-100 bg-gray-50">
+              <div className="card overflow-hidden shadow-sm">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-gray-900">Projects</h2>
-                    <span className="text-sm font-semibold text-gray-500 bg-white px-3 py-1 rounded-lg">
+                    <span className="text-sm font-semibold text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
                       {filteredProjects.length} {filteredProjects.length === 1 ? 'project' : 'projects'}
                     </span>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-100">
+                  <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -292,28 +330,28 @@ export default function DashboardPage() {
                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Overall
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {filteredProjects.map((project) => {
                         return (
                           <tr key={project.id} className="hover:bg-gray-50 transition-colors duration-150 group">
                             <td className="px-6 py-5">
-                              <div className="flex items-center gap-3">
-                                <div>
-                                  <div className="text-sm font-bold text-gray-900 group-hover:text-gray-700 transition-colors mb-1">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-lg font-bold text-gray-900 group-hover:text-gray-700 transition-colors mb-2">
                                     {project.brandName}
                                   </div>
                                   <div className="flex items-center gap-2 flex-wrap">
                                   {project.collabCode && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
+                                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 text-xs font-semibold border border-gray-200">
                                         {project.collabCode}
                                       </span>
                                   )}
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${getStatusBadgeClasses(project.status || 'Not Started')}`}>
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getStatusBadgeClasses(project.status || 'Not Started')}`}>
                                       {project.status || 'Not Started'}
                                     </span>
                                   </div>
@@ -322,53 +360,67 @@ export default function DashboardPage() {
                             </td>
                             <td className="px-6 py-5">
                               <div className="flex items-center gap-3">
-                                <div className="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden min-w-[100px]">
+                                <div className="flex-1 min-w-[140px]">
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-xs font-semibold text-gray-600">Sales</span>
+                                    <span className="text-sm font-bold text-gray-900">{project.progress.salesCompletion}%</span>
+                                  </div>
+                                  <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
                                   <div
-                                    className="block h-2.5 transition-all duration-500 rounded-full"
+                                      className="h-2.5 transition-all duration-500 rounded-full"
                                     style={{ 
                                       width: `${Math.min(100, Math.max(0, Number(project.progress.salesCompletion) || 0))}%`, 
                                       backgroundColor: getProgressBgColor(Number(project.progress.salesCompletion) || 0),
-                                      minWidth: (Number(project.progress.salesCompletion) || 0) > 0 ? '2px' : '0' 
+                                        minWidth: (Number(project.progress.salesCompletion) || 0) > 0 ? '4px' : '0' 
                                     }}
                                   />
+                                  </div>
                                 </div>
-                                <span className="text-sm font-bold text-gray-900 min-w-[45px]">{project.progress.salesCompletion}%</span>
                               </div>
                             </td>
                             <td className="px-6 py-5">
                               <div className="flex items-center gap-3">
-                                <div className="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden min-w-[100px]">
+                                <div className="flex-1 min-w-[140px]">
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-xs font-semibold text-gray-600">Launch</span>
+                                    <span className="text-sm font-bold text-gray-900">{project.progress.launchCompletion}%</span>
+                                  </div>
+                                  <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
                                   <div
-                                    className="block h-2.5 transition-all duration-500 rounded-full"
+                                      className="h-2.5 transition-all duration-500 rounded-full"
                                     style={{ 
                                       width: `${Math.min(100, Math.max(0, Number(project.progress.launchCompletion) || 0))}%`, 
                                       backgroundColor: getProgressBgColor(Number(project.progress.launchCompletion) || 0),
-                                      minWidth: (Number(project.progress.launchCompletion) || 0) > 0 ? '2px' : '0' 
+                                        minWidth: (Number(project.progress.launchCompletion) || 0) > 0 ? '4px' : '0' 
                                     }}
                                   />
+                                  </div>
                                 </div>
-                                <span className="text-sm font-bold text-gray-900 min-w-[45px]">{project.progress.launchCompletion}%</span>
                               </div>
                             </td>
                             <td className="px-6 py-5">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden min-w-[100px]">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-gray-50 border-2 border-gray-200 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm font-bold text-gray-900">{project.progress.overall}%</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
                                   <div
-                                    className="block h-2.5 transition-all duration-500 rounded-full"
+                                      className="h-2.5 transition-all duration-500 rounded-full"
                                     style={{ 
                                       width: `${Math.min(100, Math.max(0, Number(project.progress.overall) || 0))}%`, 
                                       backgroundColor: getProgressBgColor(Number(project.progress.overall) || 0),
-                                      minWidth: (Number(project.progress.overall) || 0) > 0 ? '2px' : '0' 
+                                        minWidth: (Number(project.progress.overall) || 0) > 0 ? '4px' : '0' 
                                     }}
                                   />
+                                  </div>
                                 </div>
-                                <span className="text-sm font-bold text-gray-900 min-w-[45px]">{project.progress.overall}%</span>
                               </div>
                             </td>
-                            <td className="px-6 py-5 whitespace-nowrap">
+                            <td className="px-6 py-5 whitespace-nowrap text-right">
                               <Link
                                 href={`/projects/${project.id}`}
-                                className="text-sm font-semibold text-gray-900 hover:text-gray-700 transition-colors duration-150 inline-flex items-center gap-2 group/link"
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-900 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-150 group/link"
                               >
                                 View
                                 <svg className="w-4 h-4 group-hover/link:translate-x-0.5 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">

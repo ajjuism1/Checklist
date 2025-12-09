@@ -75,8 +75,8 @@ export default function SalesHandoverPage() {
       },
     };
 
-    // Calculate progress
-    const salesCompletion = calculateProgress(data, config.sales);
+    // Calculate progress (sales checklist doesn't require requirement checks)
+    const salesCompletion = await calculateProgress(data, config.sales, false);
     const overall = Math.round((salesCompletion + project.progress.launchCompletion) / 2);
 
     await updateProject(projectId, {
@@ -170,25 +170,95 @@ export default function SalesHandoverPage() {
     ...project.checklists.sales,
   };
 
-  // Calculate completion stats
-  const completedFields = config.sales.filter((field) => {
-    const value = (initialData as Record<string, any>)[field.id];
-    if (field.optional) return true;
-    if (field.type === 'checkbox') return value === true;
-    if (field.type === 'multi_input') return Array.isArray(value) && value.length > 0;
-    if (field.type === 'group') {
-      if (typeof value === 'object' && value !== null) {
-        return field.fields?.every((subField) => {
-          const subValue = value[subField.id];
-          return subValue && subValue.toString().trim() !== '';
-        }) ?? false;
-      }
-      return false;
-    }
-    return value && value.toString().trim() !== '';
-  }).length;
+  // Helper function to determine if a field is required/mandatory
+  const isFieldRequired = (field: any): boolean => {
+    // If explicitly marked as required, it's mandatory
+    if (field.required === true) return true;
+    // If explicitly marked as optional, it's not required
+    if (field.optional === true) return false;
+    // Default: if neither is set, field is required
+    return true;
+  };
 
-  const totalRequiredFields = config.sales.filter(f => !f.optional).length;
+  // Calculate completion stats - only count non-optional fields
+  let completedFields = 0;
+  let totalRequiredFields = 0;
+
+  for (const field of config.sales) {
+    // Skip if field is marked as not relevant
+    if (initialData[`${field.id}_notRelevant`] === true) {
+      continue;
+    }
+
+    if (field.type === 'group') {
+      // Handle group fields - check each sub-field individually
+      if (field.fields) {
+        for (const subField of field.fields) {
+          // Skip if subfield is marked as not relevant or is optional
+          const subFieldNotRelevant = initialData[field.id]?.[`${subField.id}_notRelevant`] === true;
+          if (isFieldRequired(subField) && !subFieldNotRelevant) {
+            totalRequiredFields++;
+            const value = initialData[field.id]?.[subField.id];
+            
+            let isCompleted = false;
+            if (subField.type === 'checkbox') {
+              isCompleted = value === true;
+            } else if (subField.type === 'multi_input') {
+              if (Array.isArray(value) && value.length > 0) {
+                const allFilled = value.every((item: any) => {
+                  if (typeof item === 'string') {
+                    return item.trim() !== '';
+                  }
+                  // Handle object format {value, status}
+                  return item.value && item.value.toString().trim() !== '';
+                });
+                isCompleted = allFilled;
+              }
+            } else if (subField.type === 'multi_select') {
+              isCompleted = Array.isArray(value) && value.length > 0;
+            } else if (subField.type === 'select') {
+              isCompleted = value && value.toString().trim() !== '';
+            } else {
+              isCompleted = value && value.toString().trim() !== '';
+            }
+            
+            if (isCompleted) completedFields++;
+          }
+        }
+      }
+    } else {
+      // Handle regular fields - only count non-optional fields
+      if (isFieldRequired(field)) {
+        totalRequiredFields++;
+        const value = initialData[field.id];
+        
+        let isCompleted = false;
+        if (field.type === 'checkbox') {
+          isCompleted = value === true;
+        } else if (field.type === 'multi_input') {
+          if (Array.isArray(value) && value.length > 0) {
+            const allFilled = value.every((item: any) => {
+              if (typeof item === 'string') {
+                return item.trim() !== '';
+              }
+              // Handle object format {value, status}
+              return item.value && item.value.toString().trim() !== '';
+            });
+            isCompleted = allFilled;
+          }
+        } else if (field.type === 'multi_select') {
+          isCompleted = Array.isArray(value) && value.length > 0;
+        } else if (field.type === 'select') {
+          isCompleted = value && value.toString().trim() !== '';
+        } else {
+          isCompleted = value && value.toString().trim() !== '';
+        }
+        
+        if (isCompleted) completedFields++;
+      }
+    }
+  }
+
   const completionPercentage = totalRequiredFields > 0 
     ? Math.round((completedFields / totalRequiredFields) * 100) 
     : 0;
