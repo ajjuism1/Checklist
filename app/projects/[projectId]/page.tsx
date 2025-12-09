@@ -97,6 +97,8 @@ export default function ProjectDetailPage() {
 
   // Helper to get value for a field (handles both direct and nested group fields)
   const getFieldValue = (field: any, isSales: boolean) => {
+    if (!project) return null;
+    
     if (field.isSubField && field.groupId) {
       // It's a sub-field in a group
       const groupValue = isSales 
