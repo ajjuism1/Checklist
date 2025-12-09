@@ -248,7 +248,7 @@ export const generatePDF = async (project: Project, config: ChecklistConfig) => 
   };
 
   // Helper to get progress color (matching app theme)
-  const getProgressColor = (percentage: number): number[] => {
+  const getProgressColor = (percentage: number): [number, number, number] => {
     if (percentage >= 67) return colors.green500;
     if (percentage >= 34) return colors.yellow500;
     return colors.red500;
