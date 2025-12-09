@@ -386,10 +386,10 @@ export const generatePDF = async (project: Project, config: ChecklistConfig) => 
   // Sales Handover Section - matching app's section styling
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.setGState(doc.GState({ letterSpacing: -0.4 })); // -0.02em equivalent
+  (doc as any).setGState((doc as any).GState({ letterSpacing: -0.4 })); // -0.02em equivalent
   doc.setTextColor(...colors.gray900);
   doc.text('Sales Handover Information', margin, finalY);
-  doc.setGState(doc.GState({ letterSpacing: 0 })); // Reset
+  (doc as any).setGState((doc as any).GState({ letterSpacing: 0 })); // Reset
   finalY += 12;
 
   // Section divider line - matching app's gray-100 borders
@@ -463,10 +463,10 @@ export const generatePDF = async (project: Project, config: ChecklistConfig) => 
   // Launch Checklist Section - matching app's section styling
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.setGState(doc.GState({ letterSpacing: -0.4 })); // -0.02em equivalent
+  (doc as any).setGState((doc as any).GState({ letterSpacing: -0.4 })); // -0.02em equivalent
   doc.setTextColor(...colors.gray900);
   doc.text('Launch Checklist', margin, finalY);
-  doc.setGState(doc.GState({ letterSpacing: 0 })); // Reset
+  (doc as any).setGState((doc as any).GState({ letterSpacing: 0 })); // Reset
   finalY += 12;
 
   // Section divider line - matching app's gray-100 borders
