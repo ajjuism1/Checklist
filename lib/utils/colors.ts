@@ -44,10 +44,15 @@ export const getProgressRingColor = (percentage: number): string => {
  */
 export const getStatusBadgeClasses = (status: string): string => {
   const statusMap: Record<string, { bg: string; text: string }> = {
+    // Development statuses
     'Not Started': { bg: 'bg-gray-100', text: 'text-gray-700' },
     'In Progress': { bg: 'bg-blue-100', text: 'text-blue-700' },
     'On HOLD': { bg: 'bg-amber-100', text: 'text-amber-700' },
     'Completed': { bg: 'bg-green-100', text: 'text-green-700' },
+    // Publishing statuses
+    'Pending': { bg: 'bg-gray-100', text: 'text-gray-700' },
+    'Subscribed': { bg: 'bg-blue-100', text: 'text-blue-700' },
+    'Under Review': { bg: 'bg-amber-100', text: 'text-amber-700' },
     'Live': { bg: 'bg-purple-100', text: 'text-purple-700' },
   };
 

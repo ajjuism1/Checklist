@@ -21,6 +21,7 @@ export interface FieldConfig {
   optionsSource?: 'integrations' | 'static'; // For multi_select - where to get options from
   requirementsFieldId?: string; // Field ID to auto-populate with requirements when integration is selected
   hasStatus?: boolean; // For multi_input fields - whether to show status dropdown
+  hasVersion?: boolean; // For multi_input fields - whether to show version dropdown
   placeholder?: string; // Placeholder text for input fields
   subtext?: string; // Helper text/subtext to explain what the field means
 }
@@ -50,7 +51,8 @@ export interface POC {
 }
 
 export type ReleaseType = 'fresh' | 'migration';
-export type ProjectStatus = 'Not Started' | 'In Progress' | 'On HOLD' | 'Completed' | 'Live';
+export type ProjectStatus = 'Not Started' | 'In Progress' | 'On HOLD' | 'Completed';
+export type PublishingStatus = 'Pending' | 'Subscribed' | 'Under Review' | 'Live';
 
 export interface Project {
   id: string;
@@ -68,9 +70,12 @@ export interface Project {
   releaseType: ReleaseType;
   dunsStatus: string;
   poc: POC;
-  status?: ProjectStatus; // Project status
+  status?: ProjectStatus; // Development status
+  publishingStatus?: PublishingStatus; // Publishing status
+  version?: number; // Current version number (default: 1)
+  versionHistory?: number[]; // Array of all versions that have been created (e.g., [1, 2, 3])
   handoverDate?: string | null; // Handover date (ISO string)
-  completionDate?: string | null; // Date of completion (ISO string), auto-set when status is Live
+  completionDate?: string | null; // Date of completion (ISO string), auto-set when publishingStatus is Live
   checklists: {
     sales: Record<string, any>; // Dynamic based on FieldConfig
     launch: Record<string, any>; // Dynamic based on FieldConfig

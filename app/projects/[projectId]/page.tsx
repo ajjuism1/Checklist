@@ -10,9 +10,11 @@ import { ChecklistStatus } from '@/components/ChecklistStatus';
 import { Loading } from '@/components/Loading';
 import { Skeleton } from '@/components/Skeleton';
 import { StatusDropdown } from '@/components/StatusDropdown';
+import { PublishingStatusDropdown } from '@/components/PublishingStatusDropdown';
+import { VersionDropdown } from '@/components/VersionDropdown';
 import { EmailModal } from '@/components/EmailModal';
 import { getProject, getChecklistConfig, updateProject, flattenFields, getIntegrations } from '@/lib/firebase/firestore';
-import { Project, ChecklistConfig, ProjectStatus, Integration } from '@/types';
+import { Project, ChecklistConfig, ProjectStatus, PublishingStatus, Integration } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const dynamic = 'force-dynamic';
@@ -49,6 +51,87 @@ export default function ProjectDetailPage() {
         router.push('/projects');
         return;
       }
+
+      // Migrate old 'Live' status to publishingStatus
+      if ((projectData.status as string) === 'Live') {
+        const updates: Partial<Project> = {
+          status: 'Completed',
+          publishingStatus: 'Live',
+        };
+        
+        // Only update if publishingStatus is not already set
+        if (!projectData.publishingStatus) {
+          try {
+            await updateProject(projectId, updates);
+            projectData.status = 'Completed' as ProjectStatus;
+            projectData.publishingStatus = 'Live';
+          } catch (error) {
+            console.error('Error migrating status:', error);
+          }
+        } else {
+          // Just update the local state if publishingStatus already exists
+          projectData.status = 'Completed' as ProjectStatus;
+        }
+      }
+
+      // Initialize versionHistory if it doesn't exist - check all versions in data
+      if (!projectData.versionHistory || !Array.isArray(projectData.versionHistory) || projectData.versionHistory.length === 0) {
+        const versions = new Set<number>();
+        versions.add(projectData.version || 1);
+        
+        // Extract versions from multi_input fields in launch checklist
+        const launchChecklist = projectData.checklists?.launch || {};
+        
+        // Helper to extract versions from an array
+        const extractVersionsFromArray = (arr: any[]) => {
+          if (!Array.isArray(arr)) return;
+          arr.forEach((item: any) => {
+            if (item && typeof item === 'object' && item.version) {
+              versions.add(item.version);
+            }
+          });
+        };
+        
+        // Check direct fields: integrationsCredentials, customFeatures, changeRequests
+        const directFields = ['integrationsCredentials', 'customFeatures', 'changeRequests'];
+        directFields.forEach(fieldId => {
+          const fieldData = launchChecklist[fieldId];
+          extractVersionsFromArray(Array.isArray(fieldData) ? fieldData : []);
+        });
+        
+        // Check nested group fields
+        const developmentItems = launchChecklist.developmentItems;
+        if (developmentItems && typeof developmentItems === 'object') {
+          extractVersionsFromArray(Array.isArray(developmentItems.customFeatures) ? developmentItems.customFeatures : []);
+          extractVersionsFromArray(Array.isArray(developmentItems.changeRequests) ? developmentItems.changeRequests : []);
+        }
+        
+        // Check nested fields (e.g., integrations.integrations)
+        const integrationsGroup = launchChecklist.integrations;
+        if (integrationsGroup && typeof integrationsGroup === 'object') {
+          extractVersionsFromArray(Array.isArray(integrationsGroup.integrations) ? integrationsGroup.integrations : []);
+          if (integrationsGroup.integrations_versions && typeof integrationsGroup.integrations_versions === 'object') {
+            Object.values(integrationsGroup.integrations_versions).forEach((version: any) => {
+              if (typeof version === 'number') {
+                versions.add(version);
+              }
+            });
+          }
+        }
+        
+        const calculatedVersions = Array.from(versions).sort((a, b) => a - b);
+        const currentVersion = projectData.version || 1;
+        
+        // Always include version 1 and current version, plus any found in data
+        const finalVersions = new Set([1, currentVersion, ...calculatedVersions]);
+        projectData.versionHistory = Array.from(finalVersions).sort((a, b) => a - b);
+        
+        // Save it asynchronously (don't block)
+        updateProject(projectId, { versionHistory: projectData.versionHistory }).catch(err => {
+          console.error('Error initializing version history:', err);
+        });
+      }
+
       setProject(projectData);
       setConfig(configData);
       setIntegrations(integrationsData);
@@ -65,16 +148,137 @@ export default function ProjectDetailPage() {
     try {
       const updates: Partial<Project> = { status: newStatus };
       
-      // Auto-set completion date when status changes to Live
-      if (newStatus === 'Live' && !project.completionDate) {
+      await updateProject(projectId, updates);
+      setProject({ ...project, ...updates });
+    } catch (error) {
+      console.error('Error updating project status:', error);
+    }
+  };
+
+  const handlePublishingStatusChange = async (newPublishingStatus: PublishingStatus) => {
+    if (!project) return;
+    
+    try {
+      const updates: Partial<Project> = { publishingStatus: newPublishingStatus };
+      
+      // Auto-set completion date when publishingStatus changes to Live
+      if (newPublishingStatus === 'Live' && !project.completionDate) {
         updates.completionDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
       }
       
       await updateProject(projectId, updates);
       setProject({ ...project, ...updates });
     } catch (error) {
-      console.error('Error updating project status:', error);
+      console.error('Error updating publishing status:', error);
     }
+  };
+
+  const handleVersionChange = async (newVersion: number) => {
+    if (!project) return;
+    
+    try {
+      // Update version history to include the new version
+      // Ensure all versions from 1 to newVersion are included
+      const currentVersionHistory = project.versionHistory || [project.version || 1];
+      const updatedVersionHistorySet = new Set(currentVersionHistory);
+      
+      // Add all versions from 1 to newVersion to ensure continuity
+      for (let v = 1; v <= newVersion; v++) {
+        updatedVersionHistorySet.add(v);
+      }
+      
+      // Also add the new version explicitly
+      updatedVersionHistorySet.add(newVersion);
+      
+      const updatedVersionHistory = Array.from(updatedVersionHistorySet).sort((a, b) => a - b);
+      
+      const updates: Partial<Project> = { 
+        version: newVersion,
+        versionHistory: updatedVersionHistory,
+      };
+      
+      await updateProject(projectId, updates);
+      setProject({ ...project, ...updates });
+    } catch (error) {
+      console.error('Error updating version:', error);
+    }
+  };
+
+  // Calculate available versions - use versionHistory if available, otherwise calculate from data
+  const getAvailableVersions = (): number[] => {
+    if (!project) return [1];
+    
+    // If versionHistory exists, use it (preserves all historical versions)
+    if (project.versionHistory && Array.isArray(project.versionHistory) && project.versionHistory.length > 0) {
+      const currentVersion = project.version || 1;
+      const versionHistory = [...project.versionHistory];
+      
+      // Ensure all versions from 1 to currentVersion are included
+      for (let v = 1; v <= currentVersion; v++) {
+        if (!versionHistory.includes(v)) {
+          versionHistory.push(v);
+        }
+      }
+      
+      return versionHistory.sort((a, b) => a - b);
+    }
+    
+    // Otherwise, calculate from current data (for backward compatibility)
+    const versions = new Set<number>();
+    versions.add(project.version || 1);
+    
+    // Extract versions from multi_input fields in launch checklist
+    const launchChecklist = project.checklists?.launch || {};
+    
+    // Helper to extract versions from an array
+    const extractVersionsFromArray = (arr: any[]) => {
+      if (!Array.isArray(arr)) return;
+      arr.forEach((item: any) => {
+        if (item && typeof item === 'object' && item.version) {
+          versions.add(item.version);
+        }
+      });
+    };
+    
+    // Check direct fields: integrationsCredentials, customFeatures, changeRequests
+    const directFields = ['integrationsCredentials', 'customFeatures', 'changeRequests'];
+    directFields.forEach(fieldId => {
+      const fieldData = launchChecklist[fieldId];
+      extractVersionsFromArray(Array.isArray(fieldData) ? fieldData : []);
+    });
+    
+    // Check nested group fields (e.g., developmentItems.customFeatures, developmentItems.changeRequests)
+    const developmentItems = launchChecklist.developmentItems;
+    if (developmentItems && typeof developmentItems === 'object') {
+      extractVersionsFromArray(Array.isArray(developmentItems.customFeatures) ? developmentItems.customFeatures : []);
+      extractVersionsFromArray(Array.isArray(developmentItems.changeRequests) ? developmentItems.changeRequests : []);
+    }
+    
+    // Also check nested fields (e.g., integrations.integrations)
+    const integrationsGroup = launchChecklist.integrations;
+    if (integrationsGroup && typeof integrationsGroup === 'object') {
+      extractVersionsFromArray(Array.isArray(integrationsGroup.integrations) ? integrationsGroup.integrations : []);
+      // Check integration versions stored separately
+      if (integrationsGroup.integrations_versions && typeof integrationsGroup.integrations_versions === 'object') {
+        Object.values(integrationsGroup.integrations_versions).forEach((version: any) => {
+          if (typeof version === 'number') {
+            versions.add(version);
+          }
+        });
+      }
+    }
+    
+    const calculatedVersions = Array.from(versions).sort((a, b) => a - b);
+    
+    // Initialize versionHistory if it doesn't exist
+    if (calculatedVersions.length > 0 && (!project.versionHistory || project.versionHistory.length === 0)) {
+      // Save versionHistory for future use (async, don't block)
+      updateProject(projectId, { versionHistory: calculatedVersions }).catch(err => {
+        console.error('Error saving version history:', err);
+      });
+    }
+    
+    return calculatedVersions;
   };
 
   const handleDateChange = async (field: 'handoverDate' | 'completionDate', value: string) => {
@@ -288,44 +492,6 @@ export default function ProjectDetailPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  {/* Date Selectors */}
-                  <div className="flex items-center gap-4 px-4 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">
-                          Handover
-                        </label>
-                      </div>
-                      <input
-                        type="date"
-                        value={project.handoverDate || ''}
-                        onChange={(e) => handleDateChange('handoverDate', e.target.value)}
-                        className="px-3 py-1.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150"
-                      />
-                    </div>
-                    <div className="w-px h-7 bg-gray-200"></div>
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">
-                          Completion
-                        </label>
-                      </div>
-                      <input
-                        type="date"
-                        value={project.completionDate || ''}
-                        onChange={(e) => handleDateChange('completionDate', e.target.value)}
-                        className="px-3 py-1.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150"
-                        title={project.status === 'Live' && !project.completionDate ? 'Auto-set when marked as Live' : ''}
-                      />
-                    </div>
-                  </div>
-                  
                   <button
                     onClick={handleGenerateEmail}
                     className="btn-primary inline-flex items-center gap-2"
@@ -336,9 +502,47 @@ export default function ProjectDetailPage() {
                     Generate Email
                   </button>
                   <StatusDropdown
-                    status={project.status || 'Not Started'}
+                    status={(project.status as ProjectStatus) || 'Not Started'}
                     onStatusChange={handleStatusChange}
                     projectId={projectId}
+                  />
+                  <PublishingStatusDropdown
+                    status={project.publishingStatus || 'Pending'}
+                    onStatusChange={handlePublishingStatusChange}
+                    projectId={projectId}
+                  />
+                  <VersionDropdown
+                    version={project.version || 1}
+                    onVersionChange={handleVersionChange}
+                    onVersionDelete={async (versionToDelete: number) => {
+                      if (!project) return;
+                      
+                      // Don't allow deleting the current version
+                      if (versionToDelete === (project.version || 1)) {
+                        alert('Cannot delete the currently selected version. Please select a different version first.');
+                        return;
+                      }
+                      
+                      try {
+                        const currentVersionHistory = project.versionHistory || getAvailableVersions();
+                        const updatedVersionHistory = currentVersionHistory.filter(v => v !== versionToDelete).sort((a, b) => a - b);
+                        
+                        // Ensure we always have at least version 1
+                        if (updatedVersionHistory.length === 0) {
+                          updatedVersionHistory.push(1);
+                        }
+                        
+                        await updateProject(projectId, { versionHistory: updatedVersionHistory });
+                        await loadProject(); // Reload to refresh
+                      } catch (error) {
+                        console.error('Error deleting version:', error);
+                        alert('Failed to delete version. Please try again.');
+                      }
+                    }}
+                    projectId={projectId}
+                    publishingStatus={project.publishingStatus}
+                    availableVersions={getAvailableVersions()}
+                    canDelete={true}
                   />
                 </div>
               </div>
@@ -426,38 +630,77 @@ export default function ProjectDetailPage() {
 
           {/* Navigation Tabs */}
           <div className="card mb-6 overflow-hidden">
-            <nav className="flex border-b border-gray-100">
-              <Link
-                href={`/projects/${projectId}/sales`}
-                className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${
-                  pathname === `/projects/${projectId}/sales`
-                    ? 'text-gray-900 border-gray-900 bg-gray-50'
-                    : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Sales Handover
-              </Link>
-              <Link
-                href={`/projects/${projectId}/launch`}
-                className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${
-                  pathname === `/projects/${projectId}/launch`
-                    ? 'text-gray-900 border-gray-900 bg-gray-50'
-                    : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Launch Checklist
-              </Link>
-              <Link
-                href={`/projects/${projectId}/handover-report`}
-                className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${
-                  pathname === `/projects/${projectId}/handover-report`
-                    ? 'text-gray-900 border-gray-900 bg-gray-50'
-                    : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Handover Report
-              </Link>
-            </nav>
+            <div className="flex items-center border-b border-gray-100">
+              {/* Date Selectors */}
+              <div className="flex items-center gap-4 px-6 py-4 border-r border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                      Handover
+                    </label>
+                  </div>
+                  <input
+                    type="date"
+                    value={project.handoverDate || ''}
+                    onChange={(e) => handleDateChange('handoverDate', e.target.value)}
+                    className="px-3 py-1.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150"
+                  />
+                </div>
+                <div className="w-px h-7 bg-gray-200"></div>
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                      Completion
+                    </label>
+                  </div>
+                  <input
+                    type="date"
+                    value={project.completionDate || ''}
+                    onChange={(e) => handleDateChange('completionDate', e.target.value)}
+                    className="px-3 py-1.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all duration-150"
+                    title={project.publishingStatus === 'Live' && !project.completionDate ? 'Auto-set when marked as Live' : ''}
+                  />
+                </div>
+              </div>
+              <nav className="flex flex-1">
+                <Link
+                  href={`/projects/${projectId}/sales`}
+                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${
+                    pathname === `/projects/${projectId}/sales`
+                      ? 'text-gray-900 border-gray-900 bg-gray-50'
+                      : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Sales Handover
+                </Link>
+                <Link
+                  href={`/projects/${projectId}/launch`}
+                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${
+                    pathname === `/projects/${projectId}/launch`
+                      ? 'text-gray-900 border-gray-900 bg-gray-50'
+                      : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Launch Checklist
+                </Link>
+                <Link
+                  href={`/projects/${projectId}/handover-report`}
+                  className={`px-6 py-4 text-sm font-bold border-b-2 transition-all ${
+                    pathname === `/projects/${projectId}/handover-report`
+                      ? 'text-gray-900 border-gray-900 bg-gray-50'
+                      : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Handover Report
+                </Link>
+              </nav>
+            </div>
           </div>
 
           {/* Checklist Status Overview */}

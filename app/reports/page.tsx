@@ -6,7 +6,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { Loading } from '@/components/Loading';
 import { Skeleton } from '@/components/Skeleton';
 import { getAllProjects } from '@/lib/firebase/firestore';
-import { Project, ProjectStatus } from '@/types';
+import { Project, ProjectStatus, PublishingStatus } from '@/types';
 import { getStatusBadgeClasses } from '@/lib/utils/colors';
 
 interface LaunchPipelineReport {
@@ -16,6 +16,7 @@ interface LaunchPipelineReport {
   percentageRevenue: number;
   fixedPricing: string;
   status: ProjectStatus;
+  publishingStatus?: PublishingStatus;
   themeType: string;
   gmv: number;
   iarPercentage: number;
@@ -25,6 +26,8 @@ interface LaunchPipelineReport {
   fixedPrice: number;
   handoverDate: string | null;
   completionDate: string | null;
+  currentVersion: number;
+  liveVersion: number | null;
 }
 
 export const dynamic = 'force-dynamic';
@@ -46,6 +49,7 @@ export default function ReportsPage() {
     realisedMRR: 0,
     projectsByStatus: {} as Record<ProjectStatus, number>,
     projectsByTheme: {} as Record<string, number>,
+    liveProjectsCount: 0,
   });
 
   useEffect(() => {
@@ -206,8 +210,17 @@ export default function ReportsPage() {
         project.planDetails ||
         'Not specified';
 
-      // Extract status
-      const status = project.status || 'Not Started';
+      // Extract status - migrate old 'Live' status
+      let status: ProjectStatus = (project.status as ProjectStatus) || 'Not Started';
+      let publishingStatus = project.publishingStatus;
+      
+      // Handle migration of old 'Live' status
+      if ((project.status as string) === 'Live') {
+        status = 'Completed';
+        if (!publishingStatus) {
+          publishingStatus = 'Live';
+        }
+      }
 
       // Extract theme type
       const themeType = 
@@ -228,6 +241,14 @@ export default function ReportsPage() {
       // Calculate MRR components
       const mrrComponents = calculateMRRComponents(project, iarPercentage);
 
+      // Get current version (version selected on project detail page dropdown)
+      const currentVersion = project.version || 1;
+      
+      // Calculate live version (version before current version)
+      // If current version is 1, there's no live version (null)
+      // Otherwise, live version is currentVersion - 1
+      const liveVersion = currentVersion > 1 ? currentVersion - 1 : null;
+
       return {
         projectId: project.id,
         brandName,
@@ -235,6 +256,7 @@ export default function ReportsPage() {
         percentageRevenue,
         fixedPricing,
         status,
+        publishingStatus,
         themeType,
         gmv,
         iarPercentage,
@@ -244,24 +266,29 @@ export default function ReportsPage() {
         fixedPrice: mrrComponents.fixedPrice,
         handoverDate: project.handoverDate || null,
         completionDate: project.completionDate || null,
+        currentVersion,
+        liveVersion,
       };
     });
 
     // Calculate summary statistics
     // MRR Pending Realisation: Sum of MRR for projects that are NOT "Live"
     const mrrPendingRealisation = reports
-      .filter(r => r.status !== 'Live')
+      .filter(r => r.publishingStatus !== 'Live')
       .reduce((sum, r) => sum + r.mrr, 0);
     
-    // Realised MRR: Sum of MRR for projects with status "Live"
+    // Realised MRR: Sum of MRR for projects with publishingStatus "Live"
     const realisedMRR = reports
-      .filter(r => r.status === 'Live')
+      .filter(r => r.publishingStatus === 'Live')
       .reduce((sum, r) => sum + r.mrr, 0);
     
     const projectsByStatus = reports.reduce((acc, r) => {
       acc[r.status] = (acc[r.status] || 0) + 1;
       return acc;
     }, {} as Record<ProjectStatus, number>);
+
+    // Count Live projects by publishingStatus
+    const liveProjectsCount = reports.filter(r => r.publishingStatus === 'Live').length;
 
     const projectsByTheme = reports.reduce((acc, r) => {
       acc[r.themeType] = (acc[r.themeType] || 0) + 1;
@@ -276,6 +303,7 @@ export default function ReportsPage() {
       realisedMRR: Math.round(realisedMRR * 100) / 100,
       projectsByStatus,
       projectsByTheme,
+      liveProjectsCount,
     });
   };
 
@@ -402,7 +430,7 @@ export default function ReportsPage() {
                   </div>
                 </div>
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Live Projects</h3>
-                <p className="text-3xl font-bold text-gray-900">{summary.projectsByStatus['Live'] || 0}</p>
+                <p className="text-3xl font-bold text-gray-900">{summary.liveProjectsCount || 0}</p>
               </div>
             </div>
 
@@ -514,7 +542,10 @@ export default function ReportsPage() {
                         Total MRR
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        Status
+                        Development Status
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        Publishing Status
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                         Theme Type
@@ -525,12 +556,18 @@ export default function ReportsPage() {
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                         Completion Date
                       </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        Current Version
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        Live Version
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredReportData.length === 0 ? (
                       <tr>
-                        <td colSpan={13} className="px-6 py-12 text-center text-gray-500">
+                        <td colSpan={16} className="px-6 py-12 text-center text-gray-500">
                           {reportData.length === 0 ? 'No projects found' : 'No projects match the selected filters'}
                         </td>
                       </tr>
@@ -606,6 +643,11 @@ export default function ReportsPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${getStatusBadgeClasses(report.publishingStatus || 'Pending')}`}>
+                              {report.publishingStatus || 'Pending'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{report.themeType}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -628,6 +670,19 @@ export default function ReportsPage() {
                                     month: 'short', 
                                     day: 'numeric' 
                                   })
+                                : <span className="text-gray-400">—</span>
+                              }
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-semibold text-gray-900">
+                              Version {report.currentVersion}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {report.liveVersion !== null 
+                                ? <span className="font-semibold">Version {report.liveVersion}</span>
                                 : <span className="text-gray-400">—</span>
                               }
                             </div>

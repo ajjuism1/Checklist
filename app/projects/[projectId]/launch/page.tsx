@@ -42,6 +42,64 @@ export default function LaunchChecklistPage() {
         return;
       }
 
+      // Initialize versionHistory if it doesn't exist - check all versions in data
+      if (!projectData.versionHistory || !Array.isArray(projectData.versionHistory) || projectData.versionHistory.length === 0) {
+        const versions = new Set<number>();
+        versions.add(projectData.version || 1);
+        
+        // Extract versions from multi_input fields in launch checklist
+        const launchChecklist = projectData.checklists?.launch || {};
+        
+        // Helper to extract versions from an array
+        const extractVersionsFromArray = (arr: any[]) => {
+          if (!Array.isArray(arr)) return;
+          arr.forEach((item: any) => {
+            if (item && typeof item === 'object' && item.version) {
+              versions.add(item.version);
+            }
+          });
+        };
+        
+        // Check direct fields: integrationsCredentials, customFeatures, changeRequests
+        const directFields = ['integrationsCredentials', 'customFeatures', 'changeRequests'];
+        directFields.forEach(fieldId => {
+          const fieldData = launchChecklist[fieldId];
+          extractVersionsFromArray(Array.isArray(fieldData) ? fieldData : []);
+        });
+        
+        // Check nested group fields
+        const developmentItems = launchChecklist.developmentItems;
+        if (developmentItems && typeof developmentItems === 'object') {
+          extractVersionsFromArray(Array.isArray(developmentItems.customFeatures) ? developmentItems.customFeatures : []);
+          extractVersionsFromArray(Array.isArray(developmentItems.changeRequests) ? developmentItems.changeRequests : []);
+        }
+        
+        // Check nested fields (e.g., integrations.integrations)
+        const integrationsGroup = launchChecklist.integrations;
+        if (integrationsGroup && typeof integrationsGroup === 'object') {
+          extractVersionsFromArray(Array.isArray(integrationsGroup.integrations) ? integrationsGroup.integrations : []);
+          if (integrationsGroup.integrations_versions && typeof integrationsGroup.integrations_versions === 'object') {
+            Object.values(integrationsGroup.integrations_versions).forEach((version: any) => {
+              if (typeof version === 'number') {
+                versions.add(version);
+              }
+            });
+          }
+        }
+        
+        const calculatedVersions = Array.from(versions).sort((a, b) => a - b);
+        const currentVersion = projectData.version || 1;
+        
+        // Always include version 1 and current version, plus any found in data
+        const finalVersions = new Set([1, currentVersion, ...calculatedVersions]);
+        projectData.versionHistory = Array.from(finalVersions).sort((a, b) => a - b);
+        
+        // Save it asynchronously (don't block)
+        updateProject(projectId, { versionHistory: projectData.versionHistory }).catch(err => {
+          console.error('Error initializing version history:', err);
+        });
+      }
+
       setProject(projectData);
       setConfig(configData);
     } catch (error) {
@@ -146,15 +204,15 @@ export default function LaunchChecklistPage() {
     
     // If sales has integrations and launch doesn't have any yet, copy them
     if (salesIntegrationsArray.length > 0) {
-      // Launch structure: launch.accessCredentials.integrations (group.field)
-      const launchAccessCredentials = launchData.accessCredentials || {};
-      const currentLaunchIntegrations = launchAccessCredentials.integrations || [];
+      // Launch structure: launch.integrations.integrations (group.field) - updated after config change
+      const launchIntegrationsGroup = launchData.integrations || {};
+      const currentLaunchIntegrations = launchIntegrationsGroup.integrations || [];
       const hasLaunchIntegrations = Array.isArray(currentLaunchIntegrations) && currentLaunchIntegrations.length > 0;
       
       if (!hasLaunchIntegrations) {
         // Copy sales integrations to launch
-        launchData.accessCredentials = {
-          ...launchAccessCredentials,
+        launchData.integrations = {
+          ...launchIntegrationsGroup,
           integrations: [...salesIntegrationsArray], // Copy array to avoid reference issues
         };
       }
@@ -164,6 +222,79 @@ export default function LaunchChecklistPage() {
   };
 
   const initialData = getInitialData();
+
+  // Calculate available versions - use versionHistory if available, otherwise calculate from data
+  const getAvailableVersions = (): number[] => {
+    // If versionHistory exists, use it (preserves all historical versions)
+    if (project.versionHistory && Array.isArray(project.versionHistory) && project.versionHistory.length > 0) {
+      const currentVersion = project.version || 1;
+      const versionHistory = [...project.versionHistory];
+      
+      // Ensure all versions from 1 to currentVersion are included
+      for (let v = 1; v <= currentVersion; v++) {
+        if (!versionHistory.includes(v)) {
+          versionHistory.push(v);
+        }
+      }
+      
+      return versionHistory.sort((a, b) => a - b);
+    }
+    
+    // Otherwise, calculate from current data (for backward compatibility)
+    const versions = new Set<number>();
+    versions.add(project.version || 1);
+    
+    // Extract versions from multi_input fields in launch checklist
+    const launchChecklist = project.checklists?.launch || {};
+    
+    // Helper to extract versions from an array
+    const extractVersionsFromArray = (arr: any[]) => {
+      if (!Array.isArray(arr)) return;
+      arr.forEach((item: any) => {
+        if (item && typeof item === 'object' && item.version) {
+          versions.add(item.version);
+        }
+      });
+    };
+    
+    // Check direct fields: integrationsCredentials, customFeatures, changeRequests
+    const directFields = ['integrationsCredentials', 'customFeatures', 'changeRequests'];
+    directFields.forEach(fieldId => {
+      const fieldData = launchChecklist[fieldId];
+      extractVersionsFromArray(Array.isArray(fieldData) ? fieldData : []);
+    });
+    
+    // Check nested group fields
+    const developmentItems = launchChecklist.developmentItems;
+    if (developmentItems && typeof developmentItems === 'object') {
+      extractVersionsFromArray(Array.isArray(developmentItems.customFeatures) ? developmentItems.customFeatures : []);
+      extractVersionsFromArray(Array.isArray(developmentItems.changeRequests) ? developmentItems.changeRequests : []);
+    }
+    
+    // Also check nested fields (e.g., integrations.integrations)
+    const integrationsGroup = launchChecklist.integrations;
+    if (integrationsGroup && typeof integrationsGroup === 'object') {
+      extractVersionsFromArray(Array.isArray(integrationsGroup.integrations) ? integrationsGroup.integrations : []);
+      // Check integration versions stored separately
+      if (integrationsGroup.integrations_versions && typeof integrationsGroup.integrations_versions === 'object') {
+        Object.values(integrationsGroup.integrations_versions).forEach((version: any) => {
+          if (typeof version === 'number') {
+            versions.add(version);
+          }
+        });
+      }
+    }
+    
+    const calculatedVersions = Array.from(versions).sort((a, b) => a - b);
+    
+    // Always include version 1 and current version
+    const currentVersion = project.version || 1;
+    const finalVersions = new Set([1, currentVersion, ...calculatedVersions]);
+    
+    return Array.from(finalVersions).sort((a, b) => a - b);
+  };
+
+  const availableVersions = getAvailableVersions();
 
   return (
     <AuthGuard>
@@ -198,6 +329,8 @@ export default function LaunchChecklistPage() {
             initialData={initialData}
             onSubmit={handleSubmit}
             submitLabel="Save Launch Checklist"
+            projectVersion={project.version || 1}
+            availableVersions={availableVersions}
           />
           </div>
         </div>

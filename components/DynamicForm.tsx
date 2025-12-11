@@ -15,6 +15,34 @@ const isFieldRequired = (field: FieldConfig): boolean => {
   return true;
 };
 
+// Helper function to check if a string is a valid URL
+const isValidUrl = (str: string): boolean => {
+  if (!str || typeof str !== 'string') return false;
+  try {
+    // Check if it starts with http:// or https://
+    if (str.trim().startsWith('http://') || str.trim().startsWith('https://')) {
+      new URL(str.trim());
+      return true;
+    }
+    // Also check for URLs without protocol (common in user input)
+    if (str.trim().includes('.') && (str.trim().includes('://') || str.trim().match(/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}/))) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+// Helper function to normalize URL (add https:// if missing)
+const normalizeUrl = (url: string): string => {
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+};
+
 // Integration Selector Component with Search and Table View
 interface IntegrationSelectorProps {
   field: FieldConfig;
@@ -24,6 +52,13 @@ interface IntegrationSelectorProps {
   onRequirementStatusChange?: (status: Record<string, Record<string, boolean>>) => void;
   initialRequirementStatus?: Record<string, Record<string, boolean>>;
   onRemoveRequest?: (integrationId: string, integrationName: string, onConfirm: () => void) => void;
+  projectVersion?: number;
+  availableVersions?: number[];
+  onVersionChange?: (integrationId: string, version: number) => void;
+  integrationVersions?: Record<string, number>; // Map of integrationId to version
+  onIntegrationStatusChange?: (integrationId: string, status: string) => void;
+  integrationStatuses?: Record<string, string>; // Map of integrationId to status
+  isLaunchChecklist?: boolean; // Whether this is a launch checklist (vs sales checklist)
 }
 
 const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
@@ -34,11 +69,30 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
   onRequirementStatusChange,
   initialRequirementStatus = {},
   onRemoveRequest,
+  projectVersion = 1,
+  availableVersions = [1],
+  onVersionChange,
+  integrationVersions = {},
+  onIntegrationStatusChange,
+  integrationStatuses = {},
+  isLaunchChecklist = false,
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>(Array.isArray(value) ? value : []);
   const [requirementStatus, setRequirementStatus] = useState<Record<string, Record<string, boolean>>>(initialRequirementStatus);
+  
+  const integrationStatusOptions = ['Integrated', 'Pending', 'Awaiting Information'];
+  
+  // Helper function to get color classes for integration status
+  const getIntegrationStatusColor = (status: string) => {
+    switch (status) {
+      case 'Integrated': return 'bg-green-100 text-green-800 border-green-200';
+      case 'Pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Awaiting Information': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
 
   useEffect(() => {
     setSelectedIds(Array.isArray(value) ? value : []);
@@ -131,7 +185,12 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Integration</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Requirements</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                  {isLaunchChecklist && (
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                  )}
+                  {isLaunchChecklist && (field.hasVersion === true || field.id === 'integrations') && (
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[120px]">Version</th>
+                  )}
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-20">Actions</th>
                 </tr>
               </thead>
@@ -197,30 +256,58 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      {integ.requirements && integ.requirements.length > 0 ? (
-                        (() => {
-                          const checkedCount = Object.values(requirementStatus[integ.id] || {}).filter(Boolean).length;
-                          const totalCount = integ.requirements.length;
-                          const percentage = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
-                          return (
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[100px]">
-                                <div
-                                  className={`h-2 rounded-full transition-all ${
-                                    percentage === 100 ? 'bg-green-500' : percentage > 0 ? 'bg-yellow-500' : 'bg-gray-300'
-                                  }`}
-                                  style={{ width: `${percentage}%` }}
-                                />
-                              </div>
-                              <span className="text-xs text-gray-600 font-medium">{checkedCount}/{totalCount}</span>
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        <span className="text-xs text-gray-400">N/A</span>
-                      )}
-                    </td>
+                    {isLaunchChecklist && (
+                      <td className="px-4 py-3">
+                        <div className="relative group">
+                          <select
+                            value={integrationStatuses[integ.id] || 'Pending'}
+                            onChange={(e) => {
+                              if (onIntegrationStatusChange) {
+                                onIntegrationStatusChange(integ.id, e.target.value);
+                              }
+                            }}
+                            className={`w-full px-3 py-2 text-xs font-semibold rounded-lg border-2 appearance-none cursor-pointer pr-10 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 transition-all ${getIntegrationStatusColor(integrationStatuses[integ.id] || 'Pending')}`}
+                          >
+                            {integrationStatusOptions.map((statusOption) => (
+                              <option key={statusOption} value={statusOption} className="text-gray-900 py-2 bg-white">
+                                {statusOption}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </td>
+                    )}
+                    {isLaunchChecklist && (field.hasVersion === true || field.id === 'integrations') && (
+                      <td className="px-4 py-3">
+                        <div className="relative group">
+                          <select
+                            value={integrationVersions[integ.id] !== undefined ? integrationVersions[integ.id] : (availableVersions.length > 0 ? availableVersions[0] : 1)}
+                            onChange={(e) => {
+                              if (onVersionChange) {
+                                onVersionChange(integ.id, parseInt(e.target.value, 10));
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-xs font-semibold rounded-lg border-2 border-gray-200 bg-white text-gray-900 appearance-none cursor-pointer pr-10 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 focus:border-gray-900 transition-all"
+                          >
+                            {availableVersions.map((versionOption) => (
+                              <option key={versionOption} value={versionOption} className="text-gray-900 py-2 bg-white">
+                                Version {versionOption}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-center">
                       <button
                         type="button"
@@ -249,63 +336,92 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
       {isDialogOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setIsDialogOpen(false)} />
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-              <div className="bg-white px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-900">Select Integrations</h3>
+            <div className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-50 backdrop-blur-sm" onClick={() => setIsDialogOpen(false)} />
+            <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border border-gray-100">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-gray-50 to-white px-6 py-5 border-b border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Select Integrations</h3>
+                    <p className="text-sm text-gray-500 mt-1">Choose the integrations you need for this project</p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setIsDialogOpen(false)}
-                    className="text-gray-400 hover:text-gray-500"
+                    className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-1.5 transition-colors"
+                    aria-label="Close dialog"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-                <div className="mt-4">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search integrations by name, category, or requirements..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
-                    />
-                    <svg
-                      className="absolute left-3 top-2.5 w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search integrations by name, category, or requirements..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-4 py-3 pl-11 pr-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all bg-white text-sm"
+                  />
+                  <svg
+                    className="absolute left-3.5 top-3.5 w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
+                      aria-label="Clear search"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="bg-white px-6 py-4 max-h-[60vh] overflow-y-auto">
+
+              {/* Content */}
+              <div className="bg-white px-6 py-5 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 {filteredIntegrations.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {categories.map((category) => {
                       const categoryIntegrations = filteredIntegrations.filter(i => i.category === category);
                       if (categoryIntegrations.length === 0) return null;
+                      const selectedInCategory = categoryIntegrations.filter(i => selectedIds.includes(i.id)).length;
                       return (
-                        <div key={category}>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">{category}</h4>
-                          <div className="space-y-2">
+                        <div key={category} className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                              <span className="w-1 h-1 rounded-full bg-gray-400"></span>
+                              {category}
+                            </h4>
+                            {selectedInCategory > 0 && (
+                              <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                                {selectedInCategory} selected
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-2.5">
                             {categoryIntegrations.map((integ) => {
                               const isSelected = selectedIds.includes(integ.id);
                               return (
                                 <div
                                   key={integ.id}
-                                  className={`flex items-start space-x-3 p-3 rounded-lg border-2 transition-all ${
+                                  onClick={() => handleToggleIntegration(integ.id)}
+                                  className={`group flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer ${
                                     isSelected
-                                      ? 'border-gray-400 bg-gray-50'
-                                      : 'border-gray-200 bg-white hover:border-gray-300'
+                                      ? 'border-gray-900 bg-gray-50 shadow-sm'
+                                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
                                   }`}
                                 >
-                                  <div className="relative flex items-center mt-0.5">
+                                  <div className="relative flex items-center mt-0.5 flex-shrink-0">
                                     <input
                                       type="checkbox"
                                       id={`dialog-${integ.id}`}
@@ -315,14 +431,14 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
                                     />
                                     <label
                                       htmlFor={`dialog-${integ.id}`}
-                                      className={`relative flex items-center justify-center w-5 h-5 rounded border-2 cursor-pointer transition-all ${
+                                      className={`relative flex items-center justify-center w-6 h-6 rounded-md border-2 cursor-pointer transition-all ${
                                         isSelected
-                                          ? 'bg-gray-900 border-gray-900'
-                                          : 'bg-white border-gray-300'
+                                          ? 'bg-gray-900 border-gray-900 shadow-sm'
+                                          : 'bg-white border-gray-300 group-hover:border-gray-400'
                                       }`}
                                     >
                                       {isSelected && (
-                                        <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                         </svg>
                                       )}
@@ -331,16 +447,28 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
                                   <div className="flex-1 min-w-0">
                                     <label
                                       htmlFor={`dialog-${integ.id}`}
-                                      className="text-sm font-semibold text-gray-900 cursor-pointer block"
+                                      className="text-sm font-bold text-gray-900 cursor-pointer block mb-1.5"
                                     >
                                       {integ.name}
                                     </label>
                                     {integ.requirements && integ.requirements.length > 0 && (
-                                      <p className="text-xs text-gray-500 mt-1">
-                                        Requires: {integ.requirements.join(', ')}
-                                      </p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {integ.requirements.map((req, idx) => (
+                                          <span
+                                            key={idx}
+                                            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-gray-100 text-gray-600 border border-gray-200"
+                                          >
+                                            {req}
+                                          </span>
+                                        ))}
+                                      </div>
                                     )}
                                   </div>
+                                  {isSelected && (
+                                    <div className="flex-shrink-0 mt-0.5">
+                                      <div className="w-2 h-2 rounded-full bg-gray-900"></div>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -350,19 +478,34 @@ const IntegrationSelector: React.FC<IntegrationSelectorProps> = ({
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-gray-500">No integrations found matching &quot;{searchQuery}&quot;</p>
+                  <div className="text-center py-12">
+                    <svg
+                      className="w-16 h-16 text-gray-300 mx-auto mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <p className="text-sm font-medium text-gray-600 mb-1">No integrations found</p>
+                    <p className="text-xs text-gray-500">Try adjusting your search terms</p>
                   </div>
                 )}
               </div>
+
+              {/* Footer */}
               <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  <span className="font-semibold">{selectedIds.length}</span> integration{selectedIds.length !== 1 ? 's' : ''} selected
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${selectedIds.length > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                  <div className="text-sm text-gray-600">
+                    <span className="font-bold text-gray-900">{selectedIds.length}</span>{' '}
+                    <span className="text-gray-600">integration{selectedIds.length !== 1 ? 's' : ''} selected</span>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsDialogOpen(false)}
-                  className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors"
+                  className="px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
                 >
                   Done
                 </button>
@@ -380,6 +523,8 @@ interface DynamicFormProps {
   initialData?: Record<string, any>;
   onSubmit: (data: Record<string, any>) => Promise<void>;
   submitLabel?: string;
+  projectVersion?: number; // Current project version
+  availableVersions?: number[]; // Available versions for version dropdowns
 }
 
 export const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -387,10 +532,19 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   initialData = {},
   onSubmit,
   submitLabel = 'Save',
+  projectVersion = 1,
+  availableVersions = [1],
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>(initialData);
   const [loading, setLoading] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [integrations, setIntegrations] = useState<Integration[]>([]);
+  
+  // Determine if this is a launch checklist
+  // Sales checklist doesn't pass projectVersion/availableVersions, so they'll be defaults [1] and 1
+  // Launch checklist explicitly passes these props, typically with multiple versions
+  // If availableVersions has more than 1 version, or if projectVersion > 1, it's launch
+  const isLaunchChecklist = availableVersions.length > 1 || projectVersion > 1;
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
     type: 'multi_input' | 'integration';
@@ -399,10 +553,59 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     itemName?: string;
     onConfirm: () => void;
   } | null>(null);
+  const [addEntryModal, setAddEntryModal] = useState<{
+    isOpen: boolean;
+    fieldId: string;
+    fieldType: 'text' | 'textarea';
+    placeholder: string;
+    onAdd: (value: string, version: number) => void;
+    isNested?: boolean;
+    parentFieldId?: string;
+    subFieldId?: string;
+  } | null>(null);
+
+  // Deep comparison function to check if form data has changed
+  const deepEqual = (obj1: any, obj2: any): boolean => {
+    if (obj1 === obj2) return true;
+    if (obj1 == null || obj2 == null) return false;
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
+    
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+    
+    if (keys1.length !== keys2.length) return false;
+    
+    for (const key of keys1) {
+      if (!keys2.includes(key)) return false;
+      
+      const val1 = obj1[key];
+      const val2 = obj2[key];
+      
+      if (Array.isArray(val1) && Array.isArray(val2)) {
+        if (val1.length !== val2.length) return false;
+        for (let i = 0; i < val1.length; i++) {
+          if (!deepEqual(val1[i], val2[i])) return false;
+        }
+      } else if (typeof val1 === 'object' && typeof val2 === 'object' && val1 !== null && val2 !== null) {
+        if (!deepEqual(val1, val2)) return false;
+      } else if (val1 !== val2) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
 
   useEffect(() => {
     setFormData(initialData);
+    setHasUnsavedChanges(false);
   }, [initialData]);
+
+  // Check for unsaved changes whenever formData changes
+  useEffect(() => {
+    const hasChanges = !deepEqual(formData, initialData);
+    setHasUnsavedChanges(hasChanges);
+  }, [formData, initialData]);
 
   useEffect(() => {
     // Load integrations if any field uses them (check recursively in groups)
@@ -460,6 +663,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
     setLoading(true);
     try {
       await onSubmit(formData);
+      // Reset unsaved changes after successful save
+      setHasUnsavedChanges(false);
     } catch (error) {
       console.error('Form submission error:', error);
       alert('Failed to save. Please try again.');
@@ -602,7 +807,48 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
           </div>
         );
 
-      case 'text':
+      case 'text': {
+        const hasVersion = field.hasVersion === true || ['devComments', 'externalCommunications', 'remarks'].includes(field.id);
+        const defaultVersion = availableVersions.length > 0 ? availableVersions[0] : 1;
+        
+        // For versioned fields, store as array of {value, version} objects
+        // For non-versioned fields, store as simple string
+        const normalizeValue = (val: any): Array<{ value: string; version: number }> | string => {
+          if (!hasVersion) {
+            return val || '';
+          }
+          
+          // If it's already an array, return it
+          if (Array.isArray(val)) {
+            return val.map((item: any) => {
+              if (typeof item === 'string') {
+                return { value: item, version: defaultVersion };
+              }
+              return { 
+                value: item.value || '', 
+                version: item.version !== undefined ? item.version : defaultVersion 
+              };
+            });
+          }
+          
+          // If it's a single object with value/version, convert to array
+          if (typeof val === 'object' && val !== null && 'value' in val) {
+            return [{ value: val.value || '', version: val.version !== undefined ? val.version : defaultVersion }];
+          }
+          
+          // If it's a string, convert to array
+          if (typeof val === 'string' && val) {
+            return [{ value: val, version: defaultVersion }];
+          }
+          
+          // Empty array for new fields
+          return [];
+        };
+        
+        const normalizedValue = normalizeValue(value);
+        const isArray = hasVersion && Array.isArray(normalizedValue);
+        const items = isArray ? normalizedValue : [];
+        
         return (
           <div key={field.id} className="space-y-1.5">
             <div className="flex items-start justify-between">
@@ -631,19 +877,182 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               </div>
             </div>
             <div className={notRelevant ? 'opacity-50 pointer-events-none' : ''}>
-              <input
-                type="text"
-                id={field.id}
-                value={value}
-                onChange={(e) => handleChange(field.id, e.target.value)}
-                className="input-field"
-                placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-              />
+              {hasVersion ? (
+                <div className="space-y-4">
+                  {/* Versioned entries - Card-based layout */}
+                  {items.length > 0 && (
+                    <div className="space-y-2">
+                      {items.map((item: any, index: number) => (
+                        <div key={index} className="flex items-center gap-2 p-2.5 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors group">
+                          <div className="flex-1 min-w-0 relative">
+                            <input
+                              type="text"
+                              value={item.value || ''}
+                              onChange={(e) => {
+                                const newItems = [...items];
+                                newItems[index] = { ...item, value: e.target.value };
+                                handleChange(field.id, newItems);
+                              }}
+                              className={`w-full px-2 py-1.5 text-sm bg-transparent border-0 border-b border-gray-200 focus:outline-none focus:ring-0 focus:border-gray-900 transition-colors ${
+                                isValidUrl(item.value || '') 
+                                  ? 'pr-8 font-mono text-blue-700 font-medium' 
+                                  : 'font-medium text-gray-900'
+                              }`}
+                              placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                            />
+                            {isValidUrl(item.value || '') && (
+                              <a
+                                href={normalizeUrl(item.value)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                                title="Open link in new tab"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <div className="relative">
+                              <select
+                                value={item.version !== undefined ? item.version : defaultVersion}
+                                onChange={(e) => {
+                                  const newItems = [...items];
+                                  newItems[index] = { ...item, version: parseInt(e.target.value, 10) };
+                                  handleChange(field.id, newItems);
+                                }}
+                                className="px-2 py-1 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-700 appearance-none cursor-pointer pr-6 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all hover:border-gray-400"
+                              >
+                                {availableVersions.map((versionOption) => (
+                                  <option key={versionOption} value={versionOption} className="text-gray-900">
+                                    v{versionOption}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1">
+                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = items.filter((_, i) => i !== index);
+                                handleChange(field.id, newItems);
+                              }}
+                              className="p-1 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Remove"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Add new item button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddEntryModal({
+                        isOpen: true,
+                        fieldId: field.id,
+                        fieldType: 'text',
+                        placeholder: `Add new ${field.label.toLowerCase()}...`,
+                        onAdd: (value: string, version: number) => {
+                          const newItems = [...items, { value, version }];
+                          handleChange(field.id, newItems);
+                        },
+                      });
+                    }}
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add {field.label.toLowerCase()}
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    id={field.id}
+                    value={value || ''}
+                    onChange={(e) => handleChange(field.id, e.target.value)}
+                    className={`input-field ${isValidUrl(value || '') ? 'pr-10 font-mono text-sm text-blue-700' : ''}`}
+                    placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                  />
+                  {isValidUrl(value || '') && (
+                    <a
+                      href={normalizeUrl(value)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                      title="Open link in new tab"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );
+      }
 
-      case 'textarea':
+      case 'textarea': {
+        const hasVersion = field.hasVersion === true || ['devComments', 'externalCommunications', 'remarks'].includes(field.id);
+        const defaultVersion = availableVersions.length > 0 ? availableVersions[0] : 1;
+        
+        // For versioned fields, store as array of {value, version} objects
+        // For non-versioned fields, store as simple string
+        const normalizeValue = (val: any): Array<{ value: string; version: number }> | string => {
+          if (!hasVersion) {
+            return val || '';
+          }
+          
+          // If it's already an array, return it
+          if (Array.isArray(val)) {
+            return val.map((item: any) => {
+              if (typeof item === 'string') {
+                return { value: item, version: defaultVersion };
+              }
+              return { 
+                value: item.value || '', 
+                version: item.version !== undefined ? item.version : defaultVersion 
+              };
+            });
+          }
+          
+          // If it's a single object with value/version, convert to array
+          if (typeof val === 'object' && val !== null && 'value' in val) {
+            return [{ value: val.value || '', version: val.version !== undefined ? val.version : defaultVersion }];
+          }
+          
+          // If it's a string, convert to array
+          if (typeof val === 'string' && val) {
+            return [{ value: val, version: defaultVersion }];
+          }
+          
+          // Empty array for new fields
+          return [];
+        };
+        
+        const normalizedValue = normalizeValue(value);
+        const isArray = hasVersion && Array.isArray(normalizedValue);
+        const items = isArray ? normalizedValue : [];
+        
         return (
           <div key={field.id} className="space-y-1.5 md:col-span-2">
             <div className="flex items-start justify-between">
@@ -672,35 +1081,129 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               </div>
             </div>
             <div className={notRelevant ? 'opacity-50 pointer-events-none' : ''}>
-              <textarea
-                id={field.id}
-                value={value}
-                onChange={(e) => handleChange(field.id, e.target.value)}
-                rows={4}
-                className="input-field resize-y"
-                placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-              />
+              {hasVersion ? (
+                <div className="space-y-3">
+                  {/* Versioned entries - Card-based layout */}
+                  {items.length > 0 && (
+                    <div className="space-y-2">
+                      {items.map((item: any, index: number) => (
+                        <div key={index} className="flex items-start gap-2 p-2.5 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors group">
+                          <div className="flex-1 min-w-0">
+                            <textarea
+                              value={item.value || ''}
+                              onChange={(e) => {
+                                const newItems = [...items];
+                                newItems[index] = { ...item, value: e.target.value };
+                                handleChange(field.id, newItems);
+                              }}
+                              rows={3}
+                              className="w-full px-2 py-1.5 text-sm text-gray-900 bg-transparent border-0 border-b border-gray-200 focus:outline-none focus:ring-0 focus:border-gray-900 transition-colors resize-y"
+                              placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                            />
+                          </div>
+                          <div className="flex items-start gap-1.5 flex-shrink-0 pt-1">
+                            <div className="relative">
+                              <select
+                                value={item.version !== undefined ? item.version : defaultVersion}
+                                onChange={(e) => {
+                                  const newItems = [...items];
+                                  newItems[index] = { ...item, version: parseInt(e.target.value, 10) };
+                                  handleChange(field.id, newItems);
+                                }}
+                                className="px-2 py-1 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-700 appearance-none cursor-pointer pr-6 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all hover:border-gray-400"
+                              >
+                                {availableVersions.map((versionOption) => (
+                                  <option key={versionOption} value={versionOption} className="text-gray-900">
+                                    v{versionOption}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1">
+                                <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = items.filter((_, i) => i !== index);
+                                handleChange(field.id, newItems);
+                              }}
+                              className="p-1 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Remove"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Add new item button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddEntryModal({
+                        isOpen: true,
+                        fieldId: field.id,
+                        fieldType: 'textarea',
+                        placeholder: `Add new ${field.label.toLowerCase()}...`,
+                        onAdd: (value: string, version: number) => {
+                          const newItems = [...items, { value, version }];
+                          handleChange(field.id, newItems);
+                        },
+                      });
+                    }}
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add {field.label.toLowerCase()}
+                  </button>
+                </div>
+              ) : (
+                <textarea
+                  id={field.id}
+                  value={value || ''}
+                  onChange={(e) => handleChange(field.id, e.target.value)}
+                  rows={4}
+                  className="input-field resize-y"
+                  placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                />
+              )}
             </div>
           </div>
         );
+      }
 
       case 'multi_input': {
         // Handle multi_input with status dropdowns (for Custom Features and Change Requests)
         const hasStatus = field.hasStatus === true;
-        const statusOptions = ['Not Started', 'In Progress', 'Completed', 'On Hold'];
+        const hasVersion = field.hasVersion === true || ['integrationsCredentials', 'customFeatures', 'changeRequests'].includes(field.id);
+        // Use same status options as project status for consistency
+        const statusOptions = ['Not Started', 'In Progress', 'On HOLD', 'Completed'];
         
-        // Normalize value: convert string[] to {value, status, checked, remark}[] handle both formats
-        const normalizeValue = (val: any): Array<{ value: string; status: string; checked: boolean; remark: string }> => {
+        // Normalize value: convert string[] to {value, status, checked, remark, version}[] handle both formats
+        // Use first available version (1) as default, not projectVersion, so items don't change when project version changes
+        const defaultVersion = availableVersions.length > 0 ? availableVersions[0] : 1;
+        const normalizeValue = (val: any): Array<{ value: string; status: string; checked: boolean; remark: string; version?: number }> => {
           if (!Array.isArray(val)) return [];
           return val.map((item: any) => {
             if (typeof item === 'string') {
-              return { value: item, status: 'Not Started', checked: false, remark: '' };
+              return { value: item, status: 'Not Started', checked: false, remark: '', version: hasVersion ? defaultVersion : undefined };
             }
+            // Preserve existing version if it exists, otherwise use defaultVersion (not projectVersion)
             return { 
               value: item.value || '', 
               status: item.status || 'Not Started',
               checked: item.checked || false,
-              remark: item.remark || ''
+              remark: item.remark || '',
+              version: hasVersion ? (item.version !== undefined ? item.version : defaultVersion) : undefined
             };
           });
         };
@@ -749,11 +1252,13 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                         const input = e.target as HTMLInputElement;
                         const newValue = input.value.trim();
                         if (newValue) {
+                          const defaultVersion = availableVersions.length > 0 ? availableVersions[0] : 1;
                           const newItem = { 
                             value: newValue, 
                             status: 'Not Started', 
                             checked: false, 
-                            remark: '' 
+                            remark: '',
+                            ...(hasVersion ? { version: defaultVersion } : {})
                           };
                           handleChange(field.id, [...normalizedValue, newItem]);
                           input.value = '';
@@ -799,6 +1304,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                           {hasStatus && (
                             <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider min-w-[140px]">Status</th>
                           )}
+                          {hasVersion && (
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider min-w-[120px]">Version</th>
+                          )}
                           <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Remark</th>
                           <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-24">Actions</th>
                         </tr>
@@ -809,7 +1317,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                             switch (status) {
                               case 'Completed': return 'bg-green-100 text-green-800 border-green-200';
                               case 'In Progress': return 'bg-blue-100 text-blue-800 border-blue-200';
-                              case 'On Hold': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                              case 'On HOLD': return 'bg-amber-100 text-amber-800 border-amber-200';
+                              case 'On Hold': return 'bg-amber-100 text-amber-800 border-amber-200'; // Legacy support
                               default: return 'bg-gray-100 text-gray-800 border-gray-200';
                             }
                           };
@@ -892,6 +1401,32 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                                       {statusOptions.map((option) => (
                                         <option key={option} value={option} className="text-gray-900 py-2 bg-white">
                                           {option}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                      <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                </td>
+                              )}
+                              {hasVersion && (
+                                <td className="px-6 py-4">
+                                  <div className="relative group">
+                                    <select
+                                      value={item.version !== undefined ? item.version : defaultVersion}
+                                      onChange={(e) => {
+                                        const newArray = [...normalizedValue];
+                                        newArray[index] = { ...item, version: parseInt(e.target.value, 10) };
+                                        handleChange(field.id, newArray);
+                                      }}
+                                      className="w-full px-3 py-2 text-xs font-semibold rounded-lg border-2 border-gray-200 bg-white text-gray-900 appearance-none cursor-pointer pr-10 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 focus:border-gray-900 transition-all"
+                                    >
+                                      {availableVersions.map((versionOption) => (
+                                        <option key={versionOption} value={versionOption} className="text-gray-900 py-2 bg-white">
+                                          Version {versionOption}
                                         </option>
                                       ))}
                                     </select>
@@ -988,14 +1523,30 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               </div>
             </div>
             <div className={notRelevant ? 'opacity-50 pointer-events-none' : ''}>
-              <input
-                type="url"
-                id={field.id}
-                value={value}
-                onChange={(e) => handleChange(field.id, e.target.value)}
-                className="input-field"
-                placeholder={field.placeholder || "https://example.com"}
-              />
+              <div className="relative">
+                <input
+                  type="url"
+                  id={field.id}
+                  value={value}
+                  onChange={(e) => handleChange(field.id, e.target.value)}
+                  className={`input-field ${isValidUrl(value || '') ? 'pr-10 font-mono text-sm text-blue-700' : ''}`}
+                  placeholder={field.placeholder || "https://example.com"}
+                />
+                {isValidUrl(value || '') && (
+                  <a
+                    href={normalizeUrl(value)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                    title="Open link in new tab"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -1108,6 +1659,29 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                 onRemoveRequest={(integrationId, integrationName, onConfirm) => {
                   showDeleteConfirmation('integration', field.id, integrationName, onConfirm);
                 }}
+                projectVersion={projectVersion}
+                availableVersions={availableVersions}
+                onVersionChange={(integrationId, version) => {
+                  // Store integration versions
+                  const versionsFieldId = `${field.id}_versions`;
+                  const currentVersions = formData[versionsFieldId] || {};
+                  handleChange(versionsFieldId, {
+                    ...currentVersions,
+                    [integrationId]: version,
+                  });
+                }}
+                integrationVersions={formData[`${field.id}_versions`] || {}}
+                onIntegrationStatusChange={(integrationId, status) => {
+                  // Store integration statuses
+                  const statusFieldId = `${field.id}_statuses`;
+                  const currentStatuses = formData[statusFieldId] || {};
+                  handleChange(statusFieldId, {
+                    ...currentStatuses,
+                    [integrationId]: status,
+                  });
+                }}
+                integrationStatuses={formData[`${field.id}_statuses`] || {}}
+                isLaunchChecklist={isLaunchChecklist}
               />
             </div>
           </div>
@@ -1199,19 +1773,357 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                   <div key={subField.id} className={`space-y-1.5 ${isSubFieldFullWidth ? 'md:col-span-2' : ''}`}>
                     {!isIntegrationSelector && renderFieldLabel(subField, `${field.id}.${subField.id}`)}
                     {subField.type === 'textarea' ? (
-                      <textarea
-                        id={`${field.id}.${subField.id}`}
-                        value={subValue}
-                        onChange={(e) => {
-                          handleChange(field.id, {
-                            ...(value || {}),
-                            [subField.id]: e.target.value,
-                          });
-                        }}
-                        className="input-field resize-y"
-                        rows={4}
-                        placeholder={subField.placeholder || `Enter ${subField.label.toLowerCase()}`}
-                      />
+                      (() => {
+                        const hasVersion = subField.hasVersion === true || ['devComments', 'externalCommunications', 'remarks'].includes(subField.id);
+                        const defaultVersion = availableVersions.length > 0 ? availableVersions[0] : 1;
+                        
+                        // Normalize value for versioned fields - store as array
+                        const normalizeValue = (val: any): Array<{ value: string; version: number }> | string => {
+                          if (!hasVersion) {
+                            return val || '';
+                          }
+                          
+                          if (Array.isArray(val)) {
+                            return val.map((item: any) => {
+                              if (typeof item === 'string') {
+                                return { value: item, version: defaultVersion };
+                              }
+                              return { 
+                                value: item.value || '', 
+                                version: item.version !== undefined ? item.version : defaultVersion 
+                              };
+                            });
+                          }
+                          
+                          if (typeof val === 'object' && val !== null && 'value' in val) {
+                            return [{ value: val.value || '', version: val.version !== undefined ? val.version : defaultVersion }];
+                          }
+                          
+                          if (typeof val === 'string' && val) {
+                            return [{ value: val, version: defaultVersion }];
+                          }
+                          
+                          return [];
+                        };
+                        
+                        const normalizedValue = normalizeValue(subValue);
+                        const isArray = hasVersion && Array.isArray(normalizedValue);
+                        const items = isArray ? normalizedValue : [];
+                        
+                        return (
+                          <div className="space-y-4">
+                            {hasVersion ? (
+                              <>
+                                {items.length > 0 && (
+                                  <div className="space-y-2">
+                                    {items.map((item: any, index: number) => (
+                                      <div key={index} className="flex items-start gap-2 p-2.5 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors group">
+                                        <div className="flex-1 min-w-0">
+                                          <textarea
+                                            value={item.value || ''}
+                                            onChange={(e) => {
+                                              const currentGroupValue = formData[field.id] || {};
+                                              const newItems = [...items];
+                                              newItems[index] = { ...item, value: e.target.value };
+                                              handleChange(field.id, {
+                                                ...currentGroupValue,
+                                                [subField.id]: newItems,
+                                              });
+                                            }}
+                                            rows={3}
+                                            className="w-full px-2 py-1.5 text-sm text-gray-900 bg-transparent border-0 border-b border-gray-200 focus:outline-none focus:ring-0 focus:border-gray-900 transition-colors resize-y"
+                                            placeholder={subField.placeholder || `Enter ${subField.label.toLowerCase()}`}
+                                          />
+                                        </div>
+                                        <div className="flex items-start gap-1.5 flex-shrink-0 pt-1">
+                                          <div className="relative">
+                                            <select
+                                              value={item.version !== undefined ? item.version : defaultVersion}
+                                              onChange={(e) => {
+                                                const currentGroupValue = formData[field.id] || {};
+                                                const newItems = [...items];
+                                                newItems[index] = { ...item, version: parseInt(e.target.value, 10) };
+                                                handleChange(field.id, {
+                                                  ...currentGroupValue,
+                                                  [subField.id]: newItems,
+                                                });
+                                              }}
+                                              className="px-2 py-1 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-700 appearance-none cursor-pointer pr-6 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all hover:border-gray-400"
+                                            >
+                                              {availableVersions.map((versionOption) => (
+                                                <option key={versionOption} value={versionOption} className="text-gray-900">
+                                                  v{versionOption}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1">
+                                              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                              </svg>
+                                            </div>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const currentGroupValue = formData[field.id] || {};
+                                              const newItems = items.filter((_, i) => i !== index);
+                                              handleChange(field.id, {
+                                                ...currentGroupValue,
+                                                [subField.id]: newItems,
+                                              });
+                                            }}
+                                            className="p-1 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Remove"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAddEntryModal({
+                                      isOpen: true,
+                                      fieldId: `${field.id}.${subField.id}`,
+                                      fieldType: 'textarea',
+                                      placeholder: `Add new ${subField.label.toLowerCase()}...`,
+                                      isNested: true,
+                                      parentFieldId: field.id,
+                                      subFieldId: subField.id,
+                                      onAdd: (newValue: string, version: number) => {
+                                        const currentGroupValue = formData[field.id] || {};
+                                        const newItems = [...items, { value: newValue, version }];
+                                        handleChange(field.id, {
+                                          ...currentGroupValue,
+                                          [subField.id]: newItems,
+                                        });
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors flex items-center justify-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                  </svg>
+                                  Add {subField.label.toLowerCase()}
+                                </button>
+                              </>
+                            ) : (
+                              <textarea
+                                id={`${field.id}.${subField.id}`}
+                                value={subValue || ''}
+                                onChange={(e) => {
+                                  handleChange(field.id, {
+                                    ...(value || {}),
+                                    [subField.id]: e.target.value,
+                                  });
+                                }}
+                                className="input-field resize-y"
+                                rows={4}
+                                placeholder={subField.placeholder || `Enter ${subField.label.toLowerCase()}`}
+                              />
+                            )}
+                          </div>
+                        );
+                      })()
+                    ) : subField.type === 'text' ? (
+                      (() => {
+                        const hasVersion = subField.hasVersion === true || ['devComments', 'externalCommunications', 'remarks'].includes(subField.id);
+                        const defaultVersion = availableVersions.length > 0 ? availableVersions[0] : 1;
+                        
+                        // Normalize value for versioned fields - store as array
+                        const normalizeValue = (val: any): Array<{ value: string; version: number }> | string => {
+                          if (!hasVersion) {
+                            return val || '';
+                          }
+                          
+                          if (Array.isArray(val)) {
+                            return val.map((item: any) => {
+                              if (typeof item === 'string') {
+                                return { value: item, version: defaultVersion };
+                              }
+                              return { 
+                                value: item.value || '', 
+                                version: item.version !== undefined ? item.version : defaultVersion 
+                              };
+                            });
+                          }
+                          
+                          if (typeof val === 'object' && val !== null && 'value' in val) {
+                            return [{ value: val.value || '', version: val.version !== undefined ? val.version : defaultVersion }];
+                          }
+                          
+                          if (typeof val === 'string' && val) {
+                            return [{ value: val, version: defaultVersion }];
+                          }
+                          
+                          return [];
+                        };
+                        
+                        const normalizedValue = normalizeValue(subValue);
+                        const isArray = hasVersion && Array.isArray(normalizedValue);
+                        const items = isArray ? normalizedValue : [];
+                        
+                        return (
+                          <div className="space-y-4">
+                            {hasVersion ? (
+                              <>
+                                {items.length > 0 && (
+                                  <div className="space-y-2">
+                                    {items.map((item: any, index: number) => (
+                                      <div key={index} className="flex items-center gap-2 p-2.5 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors group">
+                                        <div className="flex-1 min-w-0 relative">
+                                          <input
+                                            type="text"
+                                            value={item.value || ''}
+                                            onChange={(e) => {
+                                              const currentGroupValue = formData[field.id] || {};
+                                              const newItems = [...items];
+                                              newItems[index] = { ...item, value: e.target.value };
+                                              handleChange(field.id, {
+                                                ...currentGroupValue,
+                                                [subField.id]: newItems,
+                                              });
+                                            }}
+                                            className={`w-full px-2 py-1.5 text-sm bg-transparent border-0 border-b border-gray-200 focus:outline-none focus:ring-0 focus:border-gray-900 transition-colors ${
+                                              isValidUrl(item.value || '') 
+                                                ? 'pr-8 font-mono text-blue-700 font-medium' 
+                                                : 'font-medium text-gray-900'
+                                            }`}
+                                            placeholder={subField.placeholder || `Enter ${subField.label.toLowerCase()}`}
+                                          />
+                                          {isValidUrl(item.value || '') && (
+                                            <a
+                                              href={normalizeUrl(item.value)}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="absolute right-1 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                                              title="Open link in new tab"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                              </svg>
+                                            </a>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                                          <div className="relative">
+                                            <select
+                                              value={item.version !== undefined ? item.version : defaultVersion}
+                                              onChange={(e) => {
+                                                const currentGroupValue = formData[field.id] || {};
+                                                const newItems = [...items];
+                                                newItems[index] = { ...item, version: parseInt(e.target.value, 10) };
+                                                handleChange(field.id, {
+                                                  ...currentGroupValue,
+                                                  [subField.id]: newItems,
+                                                });
+                                              }}
+                                              className="px-2 py-1 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-700 appearance-none cursor-pointer pr-6 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all hover:border-gray-400"
+                                            >
+                                              {availableVersions.map((versionOption) => (
+                                                <option key={versionOption} value={versionOption} className="text-gray-900">
+                                                  v{versionOption}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1">
+                                              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                              </svg>
+                                            </div>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const currentGroupValue = formData[field.id] || {};
+                                              const newItems = items.filter((_, i) => i !== index);
+                                              handleChange(field.id, {
+                                                ...currentGroupValue,
+                                                [subField.id]: newItems,
+                                              });
+                                            }}
+                                            className="p-1 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Remove"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAddEntryModal({
+                                      isOpen: true,
+                                      fieldId: `${field.id}.${subField.id}`,
+                                      fieldType: 'text',
+                                      placeholder: `Add new ${subField.label.toLowerCase()}...`,
+                                      isNested: true,
+                                      parentFieldId: field.id,
+                                      subFieldId: subField.id,
+                                      onAdd: (newValue: string, version: number) => {
+                                        const currentGroupValue = formData[field.id] || {};
+                                        const newItems = [...items, { value: newValue, version }];
+                                        handleChange(field.id, {
+                                          ...currentGroupValue,
+                                          [subField.id]: newItems,
+                                        });
+                                      },
+                                    });
+                                  }}
+                                  className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors flex items-center justify-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                  </svg>
+                                  Add {subField.label.toLowerCase()}
+                                </button>
+                              </>
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  id={`${field.id}.${subField.id}`}
+                                  value={subValue || ''}
+                                  onChange={(e) => {
+                                    handleChange(field.id, {
+                                      ...(value || {}),
+                                      [subField.id]: e.target.value,
+                                    });
+                                  }}
+                                  className={`input-field ${isValidUrl(subValue || '') ? 'pr-10 font-mono text-sm text-blue-700' : ''}`}
+                                  placeholder={subField.placeholder || `Enter ${subField.label.toLowerCase()}`}
+                                />
+                                {isValidUrl(subValue || '') && (
+                                  <a
+                                    href={normalizeUrl(subValue)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors"
+                                    title="Open link in new tab"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
                     ) : subField.type === 'select' ? (
                       <div className="relative group">
                         <select
@@ -1295,20 +2207,26 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                     ) : subField.type === 'multi_input' ? (
                       (() => {
                         const hasStatus = subField.hasStatus === true;
-                        const statusOptions = ['Not Started', 'In Progress', 'Completed', 'On Hold'];
+                        const hasVersion = subField.hasVersion === true || ['integrationsCredentials', 'customFeatures', 'changeRequests'].includes(subField.id);
+                        // Use same status options as project status for consistency
+                        const statusOptions = ['Not Started', 'In Progress', 'On HOLD', 'Completed'];
                         
-                        // Normalize value: convert string[] to {value, status, checked, remark}[]
-                        const normalizeValue = (val: any): Array<{ value: string; status: string; checked: boolean; remark: string }> => {
+                        // Normalize value: convert string[] to {value, status, checked, remark, version}[]
+                        // Use first available version (1) as default, not projectVersion, so items don't change when project version changes
+                        const defaultVersion = availableVersions.length > 0 ? availableVersions[0] : 1;
+                        const normalizeValue = (val: any): Array<{ value: string; status: string; checked: boolean; remark: string; version?: number }> => {
                           if (!Array.isArray(val)) return [];
                           return val.map((item: any) => {
                             if (typeof item === 'string') {
-                              return { value: item, status: 'Not Started', checked: false, remark: '' };
+                              return { value: item, status: 'Not Started', checked: false, remark: '', version: hasVersion ? defaultVersion : undefined };
                             }
+                            // Preserve existing version if it exists, otherwise use defaultVersion (not projectVersion)
                             return { 
                               value: item.value || '', 
                               status: item.status || 'Not Started',
                               checked: item.checked || false,
-                              remark: item.remark || ''
+                              remark: item.remark || '',
+                              version: hasVersion ? (item.version !== undefined ? item.version : defaultVersion) : undefined
                             };
                           });
                         };
@@ -1332,11 +2250,13 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                                       const input = e.target as HTMLInputElement;
                                       const newValue = input.value.trim();
                                       if (newValue) {
+                                        const defaultVersion = availableVersions.length > 0 ? availableVersions[0] : 1;
                                         const newItem = { 
                                           value: newValue, 
                                           status: 'Not Started', 
                                           checked: false, 
-                                          remark: '' 
+                                          remark: '',
+                                          ...(hasVersion ? { version: defaultVersion } : {})
                                         };
                                         handleChange(field.id, {
                                           ...(value || {}),
@@ -1387,6 +2307,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Item</th>
                                         {hasStatus && (
                                           <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider min-w-[140px]">Status</th>
+                                        )}
+                                        {hasVersion && (
+                                          <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider min-w-[120px]">Version</th>
                                         )}
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Remark</th>
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider w-24">Actions</th>
@@ -1501,6 +2424,35 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                                                 </div>
                                               </td>
                                             )}
+                                            {hasVersion && (
+                                              <td className="px-6 py-4">
+                                                <div className="relative group">
+                                                  <select
+                                                    value={item.version !== undefined ? item.version : defaultVersion}
+                                                    onChange={(e) => {
+                                                      const newArray = [...normalizedValue];
+                                                      newArray[index] = { ...item, version: parseInt(e.target.value, 10) };
+                                                      handleChange(field.id, {
+                                                        ...(value || {}),
+                                                        [subField.id]: newArray,
+                                                      });
+                                                    }}
+                                                    className="w-full px-3 py-2 text-xs font-semibold rounded-lg border-2 border-gray-200 bg-white text-gray-900 appearance-none cursor-pointer pr-10 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 focus:border-gray-900 transition-all"
+                                                  >
+                                                    {availableVersions.map((versionOption) => (
+                                                      <option key={versionOption} value={versionOption} className="text-gray-900 py-2 bg-white">
+                                                        Version {versionOption}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                  </div>
+                                                </div>
+                                              </td>
+                                            )}
                                             <td className="px-6 py-4">
                                               <input
                                                 type="text"
@@ -1584,6 +2536,35 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
                         onRemoveRequest={(integrationId, integrationName, onConfirm) => {
                           showDeleteConfirmation('integration', `${field.id}.${subField.id}`, integrationName, onConfirm);
                         }}
+                        projectVersion={projectVersion}
+                        availableVersions={availableVersions}
+                        onVersionChange={(integrationId, version) => {
+                          // Store integration versions within the group
+                          const versionsFieldId = `${subField.id}_versions`;
+                          const currentVersions = value?.[versionsFieldId] || {};
+                          handleChange(field.id, {
+                            ...(value || {}),
+                            [versionsFieldId]: {
+                              ...currentVersions,
+                              [integrationId]: version,
+                            },
+                          });
+                        }}
+                        integrationVersions={value?.[`${subField.id}_versions`] || {}}
+                        onIntegrationStatusChange={(integrationId, status) => {
+                          // Store integration statuses within the group
+                          const statusesFieldId = `${subField.id}_statuses`;
+                          const currentStatuses = value?.[statusesFieldId] || {};
+                          handleChange(field.id, {
+                            ...(value || {}),
+                            [statusesFieldId]: {
+                              ...currentStatuses,
+                              [integrationId]: status,
+                            },
+                          });
+                        }}
+                        integrationStatuses={value?.[`${subField.id}_statuses`] || {}}
+                        isLaunchChecklist={isLaunchChecklist}
                       />
                     ) : (
                       <input
@@ -1644,8 +2625,18 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       {/* Sticky Save Button */}
       <div className="fixed bottom-0 left-64 right-0 z-30 bg-white border-t-2 border-gray-200 shadow-lg px-8 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            <span className="font-semibold">Don&apos;t forget to save your changes</span>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-600">
+              <span className="font-semibold">Don&apos;t forget to save your changes</span>
+            </div>
+            {hasUnsavedChanges && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                <svg className="w-4 h-4 text-amber-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="text-sm font-semibold text-amber-700">You have unsaved changes</span>
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -1656,7 +2647,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
               }
             }}
             disabled={loading}
-            className="btn-primary min-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+            className={`btn-primary min-w-[200px] disabled:opacity-50 disabled:cursor-not-allowed shadow-md ${hasUnsavedChanges ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -1697,6 +2688,109 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />
+
+      {/* Add Entry Modal */}
+      {addEntryModal && (
+        <div className={`fixed inset-0 z-50 flex items-center justify-center ${addEntryModal.isOpen ? '' : 'hidden'}`}>
+          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setAddEntryModal(null)}></div>
+          <div className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">Add New Entry</h3>
+            </div>
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Content</label>
+                  {addEntryModal.fieldType === 'textarea' ? (
+                    <textarea
+                      id="modal-entry-textarea"
+                      placeholder={addEntryModal.placeholder}
+                      className="w-full px-4 py-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all placeholder:text-gray-400 resize-y"
+                      rows={6}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.ctrlKey) {
+                          e.preventDefault();
+                          const textarea = e.target as HTMLTextAreaElement;
+                          const newValue = textarea.value.trim();
+                          if (newValue) {
+                            addEntryModal.onAdd(newValue, availableVersions[0] || 1);
+                            setAddEntryModal(null);
+                          }
+                        }
+                      }}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      id="modal-entry-input"
+                      placeholder={addEntryModal.placeholder}
+                      className="w-full px-4 py-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all placeholder:text-gray-400"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const input = e.target as HTMLInputElement;
+                          const newValue = input.value.trim();
+                          if (newValue) {
+                            addEntryModal.onAdd(newValue, availableVersions[0] || 1);
+                            setAddEntryModal(null);
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Version</label>
+                  <div className="relative">
+                    <select
+                      id="modal-entry-version"
+                      defaultValue={availableVersions[0] || 1}
+                      className="w-full px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-900 appearance-none cursor-pointer pr-10 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
+                    >
+                      {availableVersions.map((versionOption) => (
+                        <option key={versionOption} value={versionOption} className="text-gray-900">
+                          Version {versionOption}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setAddEntryModal(null)}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = addEntryModal.fieldType === 'textarea' 
+                    ? document.getElementById('modal-entry-textarea') as HTMLTextAreaElement
+                    : document.getElementById('modal-entry-input') as HTMLInputElement;
+                  const versionSelect = document.getElementById('modal-entry-version') as HTMLSelectElement;
+                  const newValue = input.value.trim();
+                  if (newValue) {
+                    addEntryModal.onAdd(newValue, parseInt(versionSelect.value, 10));
+                    setAddEntryModal(null);
+                  }
+                }}
+                className="px-4 py-2 text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-colors"
+              >
+                Add Entry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

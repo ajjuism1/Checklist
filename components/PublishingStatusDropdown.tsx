@@ -1,42 +1,42 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ProjectStatus } from '@/types';
+import { PublishingStatus } from '@/types';
 
-interface StatusDropdownProps {
-  status: ProjectStatus;
-  onStatusChange: (status: ProjectStatus) => void;
+interface PublishingStatusDropdownProps {
+  status: PublishingStatus;
+  onStatusChange: (status: PublishingStatus) => void;
   projectId: string;
 }
 
-const statusConfig: Record<ProjectStatus, { bg: string; text: string; border: string; dot: string }> = {
-  'Not Started': {
+const statusConfig: Record<PublishingStatus, { bg: string; text: string; border: string; dot: string }> = {
+  'Pending': {
     bg: 'bg-gray-50',
     text: 'text-gray-700',
     border: 'border-gray-200',
     dot: 'bg-gray-500',
   },
-  'In Progress': {
+  'Subscribed': {
     bg: 'bg-blue-50',
     text: 'text-blue-700',
     border: 'border-blue-200',
     dot: 'bg-blue-500',
   },
-  'On HOLD': {
+  'Under Review': {
     bg: 'bg-amber-50',
     text: 'text-amber-700',
     border: 'border-amber-200',
     dot: 'bg-amber-500',
   },
-  'Completed': {
-    bg: 'bg-green-50',
-    text: 'text-green-700',
-    border: 'border-green-200',
-    dot: 'bg-green-500',
+  'Live': {
+    bg: 'bg-purple-50',
+    text: 'text-purple-700',
+    border: 'border-purple-200',
+    dot: 'bg-purple-500',
   },
 };
 
-export const StatusDropdown: React.FC<StatusDropdownProps> = ({
+export const PublishingStatusDropdown: React.FC<PublishingStatusDropdownProps> = ({
   status,
   onStatusChange,
   projectId,
@@ -60,12 +60,10 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
     };
   }, [isOpen]);
 
-  // Handle invalid statuses (e.g., old 'Live' status) by defaulting to 'Not Started'
-  const validStatus: ProjectStatus = statusConfig[status] ? status : 'Not Started';
-  const currentConfig = statusConfig[validStatus];
-  const allStatuses: ProjectStatus[] = ['Not Started', 'In Progress', 'On HOLD', 'Completed'];
+  const currentConfig = statusConfig[status];
+  const allStatuses: PublishingStatus[] = ['Pending', 'Subscribed', 'Under Review', 'Live'];
 
-  const handleStatusSelect = (newStatus: ProjectStatus) => {
+  const handleStatusSelect = (newStatus: PublishingStatus) => {
     onStatusChange(newStatus);
     setIsOpen(false);
   };
@@ -76,7 +74,7 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm border-2 transition-all duration-150 hover:shadow-sm ${currentConfig.bg} ${currentConfig.text} ${currentConfig.border}`}
       >
-        <span>{validStatus}</span>
+        <span>{status}</span>
         <svg
           className={`w-4 h-4 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
@@ -101,14 +99,14 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
                   key={statusOption}
                   onClick={() => handleStatusSelect(statusOption)}
                   className={`w-full px-4 py-2.5 text-left text-sm font-semibold transition-colors duration-150 flex items-center gap-2 ${
-                    validStatus === statusOption
+                    status === statusOption
                       ? `${config.bg} ${config.text}`
                       : 'text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   <div className={`w-2 h-2 rounded-full ${config.dot}`}></div>
                   <span>{statusOption}</span>
-                  {validStatus === statusOption && (
+                  {status === statusOption && (
                     <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
@@ -122,4 +120,3 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
     </div>
   );
 };
-

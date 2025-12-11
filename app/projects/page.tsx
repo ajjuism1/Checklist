@@ -238,7 +238,6 @@ export default function ProjectsPage() {
                       <option value="In Progress">In Progress</option>
                       <option value="On HOLD">On HOLD</option>
                       <option value="Completed">Completed</option>
-                      <option value="Live">Live</option>
                     </select>
                   </div>
                   
@@ -407,6 +406,9 @@ export default function ProjectsPage() {
                           )}
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getStatusBadgeClasses(project.status || 'Not Started')}`}>
                               {project.status || 'Not Started'}
+                            </span>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${getStatusBadgeClasses(project.publishingStatus || 'Pending')}`}>
+                              {project.publishingStatus || 'Pending'}
                             </span>
                           </div>
                         </div>

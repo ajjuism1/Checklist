@@ -129,9 +129,12 @@ export const getAllProjects = async (): Promise<Project[]> => {
 
 export const createProject = async (projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt' | 'progress'>): Promise<string> => {
   const now = Timestamp.now();
+  const initialVersion = projectData.version || 1;
   const newProject = {
     ...projectData,
     status: projectData.status || 'Not Started',
+    version: initialVersion,
+    versionHistory: projectData.versionHistory || [initialVersion], // Initialize with version 1
     progress: {
       salesCompletion: 0,
       launchCompletion: 0,
