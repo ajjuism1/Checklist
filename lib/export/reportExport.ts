@@ -464,7 +464,7 @@ export const generatePDF = async (project: Project, config: ChecklistConfig, int
   finalY += 15;
 
   const salesTableData = config.sales.map((field) => {
-    const value = getValue(field.id, true, field);
+    const value = getValue(field.id, true);
     const formattedValue = formatTableCellValue(value, field.type, field);
     return [field.label, formattedValue];
   });
@@ -518,7 +518,7 @@ export const generatePDF = async (project: Project, config: ChecklistConfig, int
         data.cell.styles.font = 'courier';
         const fieldIndex = data.row.index - 1;
         const field = config.sales[fieldIndex];
-        const value = getValue(field.id, true, field);
+        const value = getValue(field.id, true);
         if (value === null || value === undefined || value === '' || 
             (Array.isArray(value) && value.length === 0) ||
             (typeof value === 'object' && value !== null && Object.keys(value).length === 0)) {
@@ -553,7 +553,7 @@ export const generatePDF = async (project: Project, config: ChecklistConfig, int
   const simpleFields: any[][] = [];
   
   config.launch.forEach((field) => {
-    const value = getValue(field.id, false, field);
+    const value = getValue(field.id, false);
     
     // Check if this is a group field with array sub-fields
     if (field.type === 'group' && typeof value === 'object' && value !== null) {
